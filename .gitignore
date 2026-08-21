@@ -1,0 +1,15 @@
+# macOS
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+
+# iCloud 미다운로드 표시 파일
+*.icloud
+
+# 파이썬
+__pycache__/
+*.pyc
+
+# 공유 미리보기 확인용 출력 (tools/preview-share.py)
+share-preview.png

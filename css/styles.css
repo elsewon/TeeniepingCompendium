@@ -1,0 +1,428 @@
+/* ===== 티니핑 도감 — 공용 스타일 ===== */
+:root {
+  --pink: #ff6fa5;
+  --pink-soft: #ffd7e6;
+  --purple: #a78bfa;
+  --purple-soft: #e9e1ff;
+  --yellow: #ffd76a;
+  --mint: #7fe3c8;
+  --ink: #3a2b3f;
+  --ink-soft: #7a6b80;
+  --bg: #fff5f9;
+  --card: #ffffff;
+  --line: #f2dce7;
+  --shadow: 0 10px 30px rgba(255, 111, 165, 0.15);
+  --shadow-hover: 0 16px 40px rgba(255, 111, 165, 0.28);
+  --radius: 22px;
+  --radius-sm: 14px;
+  --font: "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  color: var(--ink);
+  background:
+    radial-gradient(1200px 500px at 100% -10%, var(--purple-soft), transparent 60%),
+    radial-gradient(1000px 500px at -10% 0%, var(--pink-soft), transparent 55%),
+    var(--bg);
+  min-height: 100vh;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: inherit; text-decoration: none; }
+
+.wrap { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
+
+/* ===== 헤더 ===== */
+/* 헤더와 검색바가 하나의 면처럼 이어져야 하므로 배경·블러 값을 공유한다.
+   둘 사이에는 경계선을 두지 않고, 검색바 아래쪽에만 선을 그린다. */
+:root {
+  --bar-bg: rgba(255, 245, 249, 0.9);
+  --bar-blur: saturate(1.4) blur(10px);
+}
+.site-header {
+  position: sticky; top: 0; z-index: 50;
+  backdrop-filter: var(--bar-blur);
+  background: var(--bar-bg);
+}
+.site-header .wrap {
+  display: flex; align-items: center; gap: 18px;
+  height: 66px;
+}
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 20px; }
+/* 로고는 파비콘과 같은 SVG 를 쓴다 (아이콘 자체에 배경·모서리가 들어 있음) */
+.brand .logo {
+  width: 34px; height: 34px; display: block;
+  border-radius: 10px; overflow: hidden;
+  box-shadow: var(--shadow);
+}
+.brand .logo img { width: 100%; height: 100%; display: block; }
+.nav { display: flex; gap: 6px; }
+.nav a {
+  padding: 8px 14px; border-radius: 999px; font-weight: 700; font-size: 14px;
+  color: var(--ink-soft); transition: .18s;
+}
+.nav a:hover { background: var(--pink-soft); color: var(--ink); }
+.nav a.active { background: var(--pink); color: #fff; box-shadow: var(--shadow); }
+
+/* 공유 버튼 — 헤더 오른쪽 끝에 붙인다 (nav 는 로고 옆 왼쪽 정렬이라 auto 여백은 여기서 준다) */
+.share-btn {
+  margin-left: auto; flex: 0 0 auto;
+  width: 38px; height: 38px; display: grid; place-items: center;
+  border: 2px solid var(--line); border-radius: 999px;
+  background: var(--card); color: var(--ink-soft);
+  cursor: pointer; transition: .18s; padding: 0;
+}
+.share-btn svg { width: 18px; height: 18px; display: block; }
+.share-btn:hover { border-color: var(--pink); color: var(--pink); box-shadow: var(--shadow); }
+.share-btn:active { transform: scale(0.94); }
+.share-btn.done { border-color: var(--mint); color: #1f9c7c; }
+
+/* 복사 완료 알림 — 공유 버튼 바로 아래에 잠깐 떴다 사라진다.
+   실제 위치(top/right)는 버튼 자리에 맞춰 showToast 가 잡아 준다. */
+.toast {
+  position: fixed; top: 0; right: 0;
+  z-index: 100; pointer-events: none;
+  white-space: nowrap;
+  padding: 10px 16px; border-radius: 999px;
+  background: rgba(58, 43, 63, 0.93); color: #fff;
+  font-size: 13.5px; font-weight: 700; line-height: 1.4;
+  box-shadow: var(--shadow);
+  opacity: 0; transform: translateY(-6px); transition: opacity .18s, transform .18s;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+
+/* ===== 컨트롤(검색/필터) ===== */
+/* 헤더 아래에 달라붙어 목록만 스크롤되게 한다 (--header-h 는 헤더 높이) */
+:root { --header-h: 66px; }
+.sticky-bar {
+  position: sticky; top: var(--header-h); z-index: 40;
+  background: var(--bar-bg);          /* 헤더와 동일 — 이음매가 보이지 않게 */
+  backdrop-filter: var(--bar-blur);
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 12px;
+}
+.controls { display: flex; flex-direction: column; gap: 12px; padding: 4px 0 0; }
+.search-box { position: relative; }
+.search-box input {
+  width: 100%; padding: 14px 56px; font-size: 16px; font-family: inherit;
+  border: 2px solid var(--line); border-radius: 999px; background: var(--card);
+  color: var(--ink); outline: none; transition: .18s;
+}
+/* 검색어 지우기 버튼 */
+.clear-btn {
+  position: absolute; right: 13px; top: 50%; transform: translateY(-50%);
+  width: 30px; height: 30px; border-radius: 999px; border: none; cursor: pointer;
+  background: var(--pink-soft); color: #c02d68; font-size: 18px; font-weight: 800;
+  line-height: 1; display: grid; place-items: center; font-family: inherit; transition: .14s;
+}
+.clear-btn:hover { background: var(--pink); color: #fff; }
+.clear-btn[hidden] { display: none; }
+.search-box input:focus { border-color: var(--pink); box-shadow: 0 0 0 4px var(--pink-soft); }
+.search-box::before {
+  content: "🔍"; position: absolute; left: 22px; top: 50%; transform: translateY(-50%);
+  font-size: 16px; opacity: .6;
+}
+.filter-group { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.filter-label { font-size: 12px; font-weight: 800; color: var(--ink-soft); margin-right: 2px; }
+.chip {
+  padding: 7px 14px; border-radius: 999px; font-weight: 700; font-size: 13px;
+  border: 2px solid var(--line); background: var(--card); color: var(--ink-soft);
+  cursor: pointer; transition: .16s; font-family: inherit;
+}
+.chip:hover { border-color: var(--pink); color: var(--ink); }
+.chip.active { background: var(--purple); border-color: var(--purple); color: #fff; }
+.chip.active.season { background: var(--pink); border-color: var(--pink); }
+
+.result-count { color: var(--ink-soft); font-weight: 700; font-size: 14px; margin: 10px 2px 0; }
+
+/* ===== 그리드 카드 ===== */
+.grid {
+  display: grid; gap: 18px; padding: 20px 0 60px;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+}
+.card {
+  background: var(--card); border-radius: var(--radius); overflow: hidden;
+  box-shadow: var(--shadow); border: 1px solid var(--line);
+  transition: transform .18s, box-shadow .18s; cursor: pointer;
+  display: flex; flex-direction: column;
+}
+.card:hover { transform: translateY(-6px); box-shadow: var(--shadow-hover); }
+/* 여백은 이미지 파일이 아니라 여기서 준다. 파일에 여백을 넣으면
+   balance-size.py 로 맞춘 크기 균형이 깨지고 성긴 그림이 더 작아진다.
+   단 .thumb 의 padding 이 아니라 그림 자체의 크기·여백으로 준다. padding 으로
+   주면 쓰지도 않을 아래쪽 여백까지 따라 생겨, 이름과의 간격을 좁히려면
+   음수 margin 으로 그것을 다시 걷어내야 한다.
+   aspect-ratio 는 그림에 걸어 둔다 — 썸네일이 모두 정사각이라 지금은 없어도
+   같지만, 정사각이 아닌 그림이 섞여도 칸 높이가 흔들리지 않는다. */
+.card .thumb { display: block; }
+/* 캐릭터 전신이 잘리지 않도록 cover 가 아니라 contain */
+.card .thumb img, .card .thumb svg {
+  width: 88%; margin: 6% auto 0; display: block;
+  aspect-ratio: 1 / 1; object-fit: contain;
+}
+.card .body { padding: 6px 12px 14px; }
+/* 카드에서 가장 먼저 읽히는 정보라 크게. 가장 긴 이름(프린세스 하츄핑, 8자)도
+   칸 최소 폭 180px - 좌우 여백 24px = 156px 안에 한 줄로 들어간다. */
+.card .name { font-weight: 800; font-size: 20px; }
+.card .name-en { font-size: 12px; color: var(--ink-soft); font-weight: 700; }
+/* 카드 태그는 한 줄로. 좁은 카드에 기수·등급·성별 셋이 들어가야 해서
+   여백과 간격을 목록에서만 조금 좁힌다 (상세 페이지 태그는 그대로). */
+.card .tags { display: flex; flex-wrap: nowrap; gap: 4px; margin-top: 9px; }
+.card .tags .tag { flex: 0 0 auto; white-space: nowrap; padding: 3px 7px; }
+/* 태그 배색 — 카드 한 장에 [기수 · 등급 · 성별] 이 나란히 붙으므로
+   카테고리마다 다른 색 계열을 쓴다: 기수=민트, 등급=금/주황/회색/보라, 성별=분홍/파랑/초록.
+   나란히 놓일 수 있는 모든 조합의 배경 색차 ΔE00 ≥ 11, 글자 대비 ≥ 4.6:1 을 만족한다.
+   (예전에는 기수·레전드·여성이 모두 분홍이라 ΔE 2~4 로 구별되지 않았다.
+    색을 고칠 때는 이 두 조건을 다시 확인할 것) */
+.tag {
+  font-size: 11px; font-weight: 800; padding: 3px 9px; border-radius: 999px;
+  background: #f2e5e8; color: #6e6366;      /* 기본값 = 등급 '일반' 과 감정 태그 */
+}
+.tag.season { background: #bcf2f0; color: #007271; }
+.tag.grade-로열 { background: #f0e1c8; color: #7d5f00; }
+.tag.grade-레전드 { background: #fbdccd; color: #a3490a; }
+.tag.grade-빌런 { background: #e5dff9; color: #5d56ba; }
+.tag.gender-여성 { background: #fcd1e3; color: #ac2571; }
+.tag.gender-남성 { background: #c7dffe; color: #096399; }
+.tag.gender-남매 { background: #dcedd5; color: #247514; }
+
+.empty { text-align: center; padding: 60px 20px; color: var(--ink-soft); font-weight: 700; }
+
+/* ===== 상세 페이지 ===== */
+/* 세로 여백만 준다. padding 단축 속성을 쓰면 .wrap 의 좌우 여백까지 0 이 되어
+   모바일에서 본문이 화면 가장자리에 붙는다. */
+.detail { padding-block: 26px 70px; }
+.back-link { display: inline-flex; align-items: center; gap: 6px; font-weight: 800; color: var(--ink-soft); margin-bottom: 18px; }
+.back-link:hover { color: var(--pink); }
+.detail-top { display: grid; grid-template-columns: 320px 1fr; gap: 30px; align-items: start; }
+/* 목록 카드와 같은 짜임: 그림 위, 이름·태그 아래. 카드 테두리·그림자는
+   여기가 갖고 .detail-image 는 그림 자리만 맡는다. */
+.detail-card {
+  border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow);
+  border: 1px solid var(--line); background: var(--card);
+}
+.detail-image { padding: 5%; }
+.detail-image img, .detail-image svg { width: 100%; display: block; aspect-ratio: 1/1; object-fit: contain; }
+.detail-head { padding: 2px 18px 20px; }
+.detail-head h1 { font-size: 27px; margin: 0 0 2px; line-height: 1.25; }
+.detail-head .en { color: var(--ink-soft); font-weight: 800; font-size: 15px; margin-bottom: 10px; }
+/* 상세 태그는 카드와 달리 줄바꿈을 허용한다 (폭이 좁고 네 개까지 붙는다) */
+.detail-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.detail-tags .tag { font-size: 12.5px; padding: 4px 10px; }
+.info-block { margin-bottom: 18px; }
+.info-block h3 {
+  font-size: 14px; color: var(--pink); margin: 0 0 6px; font-weight: 800;
+  display: flex; align-items: center; gap: 6px;
+}
+.info-block p { margin: 0; color: var(--ink); font-weight: 500; }
+.pending { color: var(--ink-soft); font-weight: 600; font-style: italic; }
+/* 사연 옆 회차 배지 */
+.ep-badge {
+  display: inline-block; margin-left: 6px; padding: 3px 10px; border-radius: 999px;
+  background: var(--purple-soft); color: #6b46c1; font-size: 11.5px; font-weight: 800;
+  vertical-align: 1px;
+}
+
+/* ===== 관계 목록 ===== */
+/* 마법·에피소드와 같은 .info-block 안에 들어간다.
+   카드 한 장은 그림·이름·관계를 세로로 쌓고, 카드끼리는 가로로 늘어놓아
+   넘치면 다음 줄로 흘린다 (관계는 많아야 5개). */
+.rel-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+/* li 를 늘여 이름이 두 줄이 되는 카드가 있어도 높이를 맞춘다 */
+.rel-list > li { display: flex; }
+.rel-item {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px;
+  min-width: 88px; max-width: 132px; padding: 11px 12px 12px; text-align: center;
+  border-radius: 18px;
+  background: var(--card); border: 1px solid var(--line);
+  box-shadow: 0 4px 14px rgba(255, 111, 165, 0.10);
+  transition: transform .18s, box-shadow .18s, border-color .18s;
+}
+a.rel-item:hover { transform: translateY(-2px); border-color: var(--pink); box-shadow: var(--shadow); }
+.rel-item.is-off { opacity: .65; }   /* 아직 도감에 없는 상대 */
+/* 배경 없이 그림만 놓는다. 썸네일은 배경이 비어 있어 원으로 잘라 내면
+   깃털·리본 같은 바깥쪽이 잘리므로, 목록 카드처럼 contain 으로 전신을 담는다. */
+.rel-face { width: 56px; height: 56px; flex: none; }
+.rel-face img, .rel-face svg { width: 100%; height: 100%; display: block; object-fit: contain; }
+.rel-name { font-weight: 800; font-size: 13.5px; line-height: 1.3; }
+/* 관계 라벨은 카드 맨 아래에 붙여 여러 장이 나란할 때 줄이 맞게 한다 */
+.rel-label {
+  margin-top: auto; padding: 3px 10px; border-radius: 999px;
+  background: var(--pink-soft); color: #c02d68; font-size: 11.5px; font-weight: 800;
+}
+
+/* ===== 퀴즈 페이지 ===== */
+.quiz { padding-block: 26px 70px; text-align: center; }   /* 좌우는 .wrap 이 담당 */
+.quiz h1 { font-size: 30px; margin: 0 0 6px; }
+.quiz .sub { color: var(--ink-soft); font-weight: 600; margin: 0 0 8px; }
+.quiz-score { font-weight: 800; color: var(--purple); margin-bottom: 18px; }
+.quiz-stage {
+  max-width: 420px; margin: 0 auto; background: var(--card); border-radius: var(--radius);
+  box-shadow: var(--shadow); border: 1px solid var(--line); padding: 26px; position: relative;
+}
+.quiz-image { border-radius: var(--radius-sm); overflow: hidden; margin-bottom: 18px; background: var(--pink-soft); }
+/* 원본 비율이 제각각이라 contain 으로 맞춘다 (없으면 정사각형으로 찌그러짐) */
+.quiz-image img, .quiz-image svg { width: 100%; display: block; aspect-ratio: 1/1; object-fit: contain; }
+.name-slot {
+  height: 62px; border-radius: 999px; border: 3px dashed var(--pink);
+  display: grid; place-items: center; cursor: pointer; user-select: none;
+  font-weight: 800; font-size: 22px; color: var(--pink); transition: .2s;
+  background: var(--pink-soft);
+}
+.name-slot:hover { background: #ffc9dd; }
+.name-slot.revealed {
+  border-style: solid; background: linear-gradient(135deg, var(--pink), var(--purple));
+  color: #fff;
+}
+/* 이름이 공개된 뒤에는 눌러서 개별 페이지로 이동한다 */
+.name-slot.revealed:hover { filter: brightness(1.06); }
+/* .name-slot 이 display:grid 라 이름과 화살표를 한 요소로 묶어야 같은 줄에 놓인다 */
+.name-slot .ans { display: inline-flex; align-items: center; }
+.name-slot .go { font-size: 17px; margin-left: 9px; opacity: .85; }
+.name-slot .hint { font-size: 14px; font-weight: 700; opacity: .8; }
+.name-slot .en { font-size: 13px; font-weight: 700; opacity: .9; margin-left: 8px; }
+/* 정답 공개 시 함께 보여 주는 태그 */
+.reveal-info {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; margin-top: 14px;
+  animation: reveal-pop .22s ease-out;
+}
+/* display 를 지정한 요소는 hidden 속성만으로 숨겨지지 않는다.
+   브라우저 기본 [hidden]{display:none} 보다 작성자 스타일이 우선하기 때문. */
+.reveal-info[hidden] { display: none; }
+@keyframes reveal-pop { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: none; } }
+/* 난도 선택 화면 */
+.difficulty-screen { max-width: 460px; margin: 8px auto 0; display: grid; gap: 12px; }
+.difficulty-screen[hidden] { display: none; }   /* 위와 같은 이유 */
+.diff-card {
+  display: flex; align-items: center; gap: 15px; padding: 18px 20px; text-align: left;
+  background: var(--card); border: 2px solid var(--line); border-radius: var(--radius);
+  box-shadow: var(--shadow); cursor: pointer; font-family: inherit; transition: .16s;
+}
+.diff-card:hover { border-color: var(--pink); transform: translateY(-3px); box-shadow: var(--shadow-hover); }
+.diff-card .emoji { font-size: 30px; line-height: 1; }
+.diff-card .txt { display: flex; flex-direction: column; }
+.diff-card .t { font-weight: 800; font-size: 18px; color: var(--ink); }
+.diff-card .d { color: var(--ink-soft); font-weight: 600; font-size: 13px; }
+
+/* 난도 표시 바 */
+.mode-bar { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 14px; }
+.mode-bar .cur { font-weight: 800; color: var(--purple); }
+
+/* 어려움: 실루엣 */
+.quiz-image.silhouette img, .quiz-image.silhouette svg { filter: brightness(0); transition: filter .35s; }
+.quiz-image img, .quiz-image svg { transition: filter .35s; }
+
+/* 쉬움: 3지선다 */
+.choices { display: grid; gap: 10px; }
+.choice-btn {
+  /* O/X 표시와 글자를 같은 축에 세운다. 예전에는 vertical-align 로 픽셀을 맞췄는데
+     글자 크기가 달라지는 모바일에서 어긋났다. */
+  display: flex; align-items: center; justify-content: center; gap: 9px;
+  padding: 14px; border-radius: 999px; border: 2px solid var(--line); background: var(--card);
+  color: var(--ink); font-weight: 800; font-size: 17px; cursor: pointer; font-family: inherit; transition: .14s;
+}
+.choice-btn:hover:not(:disabled) { border-color: var(--pink); transform: translateY(-2px); }
+.choice-btn:disabled { cursor: default; }
+.choice-btn.correct { background: linear-gradient(135deg, var(--mint), #57cfae); border-color: #57cfae; color: #fff; }
+.choice-btn.wrong { background: #ffd7d7; border-color: #ff9b9b; color: #c02d68; }
+/* 정답 O / 오답 X 표시 — 글자만 크게 (감싸는 원은 두지 않는다) */
+.choice-btn .mark {
+  flex: 0 0 auto; font-size: 24px; font-weight: 900; line-height: 1;
+}
+.choice-btn.correct .mark { color: #fff; }
+.choice-btn.go-detail { cursor: pointer; }
+.choice-btn.go-detail:hover { filter: brightness(1.06); }
+.choice-btn .go { font-size: 15px; opacity: .9; }
+.choice-btn.wrong .mark { color: #c02d68; }
+
+.quiz-btns { display: flex; gap: 10px; justify-content: center; margin-top: 20px; }
+.btn {
+  padding: 12px 22px; border-radius: 999px; font-weight: 800; font-size: 15px;
+  border: none; cursor: pointer; font-family: inherit; transition: .16s;
+}
+.btn-primary { background: var(--pink); color: #fff; box-shadow: var(--shadow); }
+.btn-primary:hover { background: #ff5697; transform: translateY(-2px); }
+.btn-ghost { background: var(--card); color: var(--ink-soft); border: 2px solid var(--line); }
+.btn-ghost:hover { border-color: var(--purple); color: var(--purple); }
+
+/* 공유용 페이지(p/<id>.html) — 자바스크립트가 곧바로 상세로 보내므로
+   보통은 눈에 띄지 않는다. 자동 이동이 막힌 경우를 위한 안내 화면. */
+.redirect-note {
+  text-align: center; padding: 80px 20px;
+  color: var(--ink-soft); font-weight: 700;
+}
+.redirect-note .btn { margin-top: 6px; }
+
+/* ===== 반응형 ===== */
+@media (max-width: 720px) {
+  .wrap { padding: 0 14px; }
+
+  /* 헤더를 낮추고, 고정바 위치도 따라 내린다 */
+  :root { --header-h: 56px; }
+  .site-header .wrap { height: 56px; gap: 10px; }
+  .brand { font-size: 17px; }
+  .brand .logo { width: 30px; height: 30px; border-radius: 9px; }
+  .nav a { padding: 7px 11px; font-size: 13px; }
+  .share-btn { width: 34px; height: 34px; }
+  .share-btn svg { width: 16px; height: 16px; }
+
+  .sticky-bar { padding-bottom: 10px; }
+  .controls { padding: 4px 0 0; gap: 10px; }
+  .search-box input { padding: 12px 50px; font-size: 16px; } /* 16px 미만이면 iOS 가 확대함 */
+
+  /* 필터 칩이 여러 줄로 쌓이지 않도록 가로 스크롤 */
+  .filter-group {
+    flex-wrap: nowrap; overflow-x: auto; gap: 6px;
+    scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  }
+  .filter-group::-webkit-scrollbar { display: none; }
+  .filter-group > * { flex: 0 0 auto; }
+  .chip { padding: 6px 12px; font-size: 12.5px; }
+
+  /* 목록: 한 줄에 2칸 */
+  .grid { grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 14px 0 40px; }
+  .card { border-radius: 18px; }
+  .card .name { font-size: 17px; }
+  .tag { font-size: 10px; padding: 3px 7px; }
+  .card .tags .tag { padding: 3px 6px; }
+
+  /* 상세 */
+  .detail { padding-block: 18px 50px; }
+  .detail-top { grid-template-columns: 1fr; gap: 18px; }
+  .detail-card { max-width: 300px; margin: 0 auto; }
+  .detail-head h1 { font-size: 24px; }
+  .info-block p { font-size: 15px; }
+
+  /* 퀴즈 */
+  .quiz { padding-block: 18px 50px; }
+  .quiz h1 { font-size: 24px; }
+  .quiz-stage { padding: 18px; }
+  .diff-card { padding: 15px 16px; gap: 12px; }
+  .diff-card .emoji { font-size: 26px; }
+  .diff-card .t { font-size: 16px; }
+  .diff-card .d { font-size: 12.5px; }
+  .name-slot { height: 56px; font-size: 19px; }
+  .choice-btn { padding: 12px; font-size: 16px; }
+}
+
+/* 아주 좁은 화면 */
+@media (max-width: 380px) {
+  .grid { grid-template-columns: 1fr; }
+  .nav a { padding: 6px 9px; font-size: 12px; }
+  .site-header .wrap { gap: 6px; }
+}
+
+.footer {
+  text-align: center; color: var(--ink-soft); font-size: 12px;
+  padding: 30px 20px 44px; font-weight: 600; line-height: 1.6;
+  border-top: 1px solid var(--line); margin-top: 10px;
+}
+.footer p { margin: 3px 0; }
+.footer a { color: #c02d68; font-weight: 700; text-decoration: underline; }

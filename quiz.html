@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>티니핑 도감 - 이름 맞추기</title>
+  <meta name="description" content="쉬움·보통·어려움 세 가지 난도로 티니핑 이름을 맞혀 보세요.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="티니핑 도감">
+  <meta property="og:locale" content="ko_KR">
+  <meta property="og:title" content="티니핑 도감 - 이름 맞추기">
+  <meta property="og:description" content="쉬움·보통·어려움 세 가지 난도로 티니핑 이름을 맞혀 보세요.">
+  <meta property="og:url" content="https://elsewon.github.io/TeeniepingCompendium/quiz.html">
+  <meta property="og:image" content="https://elsewon.github.io/TeeniepingCompendium/images/og/quiz.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="티니핑 이름 맞추기">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" type="image/svg+xml" href="images/favicon.svg">
+  <link rel="apple-touch-icon" href="images/heartsping.png">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <a class="brand" href="index.html">
+        <span class="logo"><img src="images/favicon.svg" alt=""></span>
+        <span>티니핑 도감</span>
+      </a>
+      <nav class="nav">
+        <a href="#" data-random title="아무 티니핑이나 보여줘!">🔮 랜덤핑</a>
+        <a href="quiz.html">🧩 이름 맞추기</a>
+      </nav>
+      <button class="share-btn" type="button" data-share aria-label="이 페이지 공유하기" title="이 페이지 공유하기">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+          <line x1="8.6" y1="10.5" x2="15.4" y2="6.5"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="wrap quiz">
+    <h1>이름 맞추기</h1>
+    <p class="sub">난도를 골라 시작해 보세요!</p>
+
+    <!-- 난도 선택 화면 -->
+    <div class="difficulty-screen" id="difficultyScreen">
+      <button class="diff-card" data-mode="easy">
+        <span class="emoji">🍭</span>
+        <span class="txt"><span class="t">쉬움</span><span class="d">이미지 보고 이름 선택지 3개 중 고르기</span></span>
+      </button>
+      <button class="diff-card" data-mode="normal">
+        <span class="emoji">🍨</span>
+        <span class="txt"><span class="t">보통</span><span class="d">이름 가리기 · 눌러서 정답 확인</span></span>
+      </button>
+      <button class="diff-card" data-mode="hard">
+        <span class="emoji">😎</span>
+        <span class="txt"><span class="t">어려움</span><span class="d">실루엣만 보고 맞히기 · 눌러서 정답 확인</span></span>
+      </button>
+    </div>
+
+    <!-- 퀴즈 진행 화면 -->
+    <div id="stage" hidden>
+      <div class="mode-bar">
+        <span class="cur" id="modeLabel"></span>
+        <button class="chip" id="changeBtn">난도 바꾸기</button>
+      </div>
+      <p class="quiz-score" id="score"></p>
+
+      <div class="quiz-stage">
+        <div class="quiz-image" id="quizImage"></div>
+        <div id="answerArea"></div>
+        <div class="reveal-info" id="revealInfo" hidden></div>
+        <div class="quiz-btns">
+          <button class="btn btn-primary" id="nextBtn">다음 티니핑 →</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <p><a href="mailto:papa.ping@icloud.com">papa.ping@icloud.com</a> · 2026 · 딸에게 보여주려고 만든 비공식 팬 페이지입니다.
+       광고나 후원 등 어떤 형태의 수익화도 하지 않습니다.</p>
+    <p>캐릭터 이름·이미지 등 모든 권리는 <a href="https://samg.net/" rel="noopener nofollow" target="_blank">SAMG엔터테인먼트</a>에 있습니다.
+       마법과 에피소드 줄거리 출처: <a href="https://namu.wiki/w/티니핑" rel="noopener nofollow" target="_blank">나무위키</a>
+       (<a href="https://creativecommons.org/licenses/by-nc-sa/2.0/kr/" rel="noopener nofollow" target="_blank">CC BY-NC-SA 2.0 KR</a>)</p>
+  </footer>
+
+  <script src="data/teeniepings.js"></script>
+  <script src="js/util.js"></script>
+  <script src="js/quiz.js"></script>
+</body>
+</html>
