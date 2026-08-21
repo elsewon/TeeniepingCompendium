@@ -18,9 +18,11 @@ const el = {
 };
 
 let mode = null;
+/* 난도별 주간·월간 도전수. js/stats.js 가 받아 온 것을 이벤트로 넘겨받는다
+   (같은 정보를 두 번 요청하지 않으려고). */
+let modeCounts = null;
 let pool = [];
 let current = null;
-let seen = 0, answered = 0, correct = 0;
 
 /* 퀴즈 대상은 전체다. 예전에는 그림 없는 티니핑을 걸렀지만 지금은 157마리 모두
  * 그림이 있다. 혹시 빠지더라도 imageMarkup 이 플레이스홀더로 대체한다. */
@@ -40,7 +42,6 @@ function shuffle(arr) {
 
 function startMode(m) {
   mode = m;
-  seen = 0; answered = 0; correct = 0;
   pool = [];
   el.modeLabel.textContent = "난도: " + MODES[m].label;
   el.diffScreen.hidden = true;
@@ -61,7 +62,8 @@ function nextQuestion() {
   }
   if (!pool.length) pool = shuffle(quizPool());
   current = pool.pop();
-  seen++;
+  // 문제 하나 = 도전 한 번. js/stats.js 가 받아서 난도별로 센다.
+  document.dispatchEvent(new CustomEvent("ping:quiz", { detail: { mode } }));
 
   // 이미지 (어려움: 실루엣)
   el.image.innerHTML = imageMarkup(current, 380);
@@ -104,10 +106,11 @@ function armLater(ms) {
 }
 
 function updateScore() {
-  const total = quizPool().length;
-  el.score.textContent = MODES[mode].choices
-    ? `맞힘 ${correct} / 푼 문제 ${answered}  ·  전체 ${total}마리`
-    : `${seen}번째  ·  전체 ${total}마리`;
+  const n = (v) => Number(v || 0).toLocaleString("ko-KR");
+  // 통계가 오기 전이나 꺼져 있을 때는 예전처럼 전체 마릿수를 보여 준다
+  el.score.textContent = modeCounts
+    ? `주간 도전 ${n(modeCounts.week[mode])}  ·  월간 도전 ${n(modeCounts.month[mode])}`
+    : `전체 ${quizPool().length}마리`;
 }
 
 /* --- 보통/어려움: 이름 가리기 --- */
@@ -153,8 +156,6 @@ function renderChoices() {
       settled = true;
       gate = armLater();
       const chosenId = btn.dataset.id;
-      answered++;
-      if (chosenId === current.id) correct++;
       btns.forEach((b) => {
         if (b.dataset.id === current.id) {
           b.classList.add("correct");
@@ -183,3 +184,10 @@ el.diffScreen.querySelectorAll(".diff-card").forEach((card) => {
 });
 el.changeBtn.addEventListener("click", backToDifficulty);
 el.next.addEventListener("click", nextQuestion);
+
+document.addEventListener("ping:stats", (e) => {
+  const m = (e.detail || {}).mode;
+  if (!m || !m.week || !m.month) return;
+  modeCounts = m;
+  if (mode) updateScore();          // 퀴즈를 푸는 중이면 바로 반영
+});

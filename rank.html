@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>티니핑 도감 - 인기 차트</title>
+  <meta name="description" content="티니핑 주간·월간 좋아요·조회·공유 순위.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="티니핑 도감">
+  <meta property="og:locale" content="ko_KR">
+  <meta property="og:title" content="티니핑 도감 - 인기 차트">
+  <meta property="og:description" content="티니핑 주간·월간 좋아요·조회·공유 순위.">
+  <meta property="og:url" content="https://elsewon.github.io/TeeniepingCompendium/rank.html">
+  <meta property="og:image" content="https://elsewon.github.io/TeeniepingCompendium/images/og/rank.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="티니핑 인기 차트">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" type="image/svg+xml" href="images/favicon.svg">
+  <link rel="apple-touch-icon" href="images/heartsping.png">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <a class="brand" href="index.html">
+        <span class="logo"><img src="images/favicon.svg" alt=""></span>
+        <span>티니핑 도감</span>
+      </a>
+      <nav class="nav">
+        <a href="#" data-random title="아무 티니핑이나 보여줘!">🔮 랜덤핑</a>
+        <a href="quiz.html">🧩 이름 맞추기</a>
+        <a href="rank.html">🏆 인기 차트</a>
+      </nav>
+      <button class="share-btn" type="button" data-share aria-label="이 페이지 공유하기" title="이 페이지 공유하기">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+          <line x1="8.6" y1="10.5" x2="15.4" y2="6.5"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="wrap rank">
+    <h1>인기 차트</h1>
+
+    <div class="rank-tabs" id="periodTabs">
+      <button class="chip active" data-period="day">일간</button>
+      <button class="chip" data-period="week">주간</button>
+      <button class="chip" data-period="month">월간</button>
+    </div>
+    <div class="rank-nav">
+      <button class="rank-arrow" id="prevBtn" type="button" aria-label="이전 기간">←</button>
+      <span class="rank-range" id="rankRange"></span>
+      <button class="rank-arrow" id="nextBtn" type="button" aria-label="다음 기간">→</button>
+    </div>
+    <div class="rank-cols">
+      <section>
+        <h2>💖 좋아요 순위</h2>
+        <div id="likeList"></div>
+      </section>
+      <section>
+        <h2>🔎 조회 순위</h2>
+        <div id="visitList"></div>
+      </section>
+      <section>
+        <h2>📤 공유 순위</h2>
+        <div id="shareList"></div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <p class="stats" id="statsBox" hidden>
+      <a class="stats-link" href="stats.html">통계</a> · <span id="stats"></span>
+    </p>
+    <p><a href="mailto:papa.ping@icloud.com">papa.ping@icloud.com</a> · 2026 · 딸에게 보여주려고 만든 비공식 팬 페이지입니다.
+       광고나 후원 등 어떤 형태의 수익화도 하지 않습니다.</p>
+    <p>캐릭터 이름·이미지 등 모든 권리는 <a href="https://samg.net/" rel="noopener nofollow" target="_blank">SAMG엔터테인먼트</a>에 있습니다.
+       마법과 에피소드 줄거리 출처: <a href="https://namu.wiki/w/티니핑" rel="noopener nofollow" target="_blank">나무위키</a>
+       (<a href="https://creativecommons.org/licenses/by-nc-sa/2.0/kr/" rel="noopener nofollow" target="_blank">CC BY-NC-SA 2.0 KR</a>)</p>
+  </footer>
+
+  <script src="data/teeniepings.js"></script>
+  <script src="js/util.js"></script>
+  <script src="js/stats.js"></script>
+  <script src="js/rank.js"></script>
+</body>
+</html>

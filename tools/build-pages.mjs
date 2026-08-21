@@ -161,6 +161,12 @@ ${HEADER}
             ${t.emotion ? `<span class="tag">${esc(t.emotion)}</span>` : ""}
           </div>
         </div>
+        <!-- 카드 맨 아래 띠. 숫자를 받아 온 뒤에 js/page.js 가 보여 준다 -->
+        <button class="like-btn" type="button" data-like hidden aria-pressed="false">
+          <span class="like-heart" aria-hidden="true">💖</span>
+          <span class="like-text">좋아요</span>
+          <b class="like-count">0</b>
+        </button>
       </div>
       <div class="detail-info">
         <div class="info-block">
@@ -183,6 +189,7 @@ ${FOOTER}
 
   <script src="${UP}data/ping-ids.js"></script>
   <script src="${UP}js/util.js"></script>
+  <script src="${UP}js/stats.js"></script>
   <script src="${UP}js/page.js"></script>
 </body>
 </html>

@@ -136,6 +136,9 @@ function shareUrl() {
   const url = new URL(location.href);
   url.searchParams.delete("from");
   url.hash = "";
+  // 공유 버튼을 거친 링크임을 표시한다 — 유입 통계에서 이것만 확실히 구분된다.
+  // 받은 사람 쪽에서는 세고 나서 js/stats.js 가 주소에서 지운다.
+  url.searchParams.set("s", "1");
   return url.href;
 }
 
@@ -171,6 +174,12 @@ function copyText(text) {
   return navigator.clipboard.writeText(text);
 }
 
+/* 공유가 실제로 이뤄졌음을 알린다 — js/stats.js 가 받아서 센다.
+   시트를 열었다 그냥 닫은 경우(AbortError)는 부르지 않는다. */
+function sharedOnce() {
+  document.dispatchEvent(new CustomEvent("ping:share"));
+}
+
 async function sharePage(btn) {
   const url = shareUrl();
   const title = document.title;
@@ -178,6 +187,7 @@ async function sharePage(btn) {
   if (navigator.share) {
     try {
       await navigator.share({ title, url });
+      sharedOnce();
       return;
     } catch (err) {
       // 사용자가 공유 시트를 닫은 것뿐이면 아무 일도 하지 않는다
@@ -188,6 +198,7 @@ async function sharePage(btn) {
 
   try {
     await copyText(url);
+    sharedOnce();
     showToast("링크를 복사했어요 💗", btn);
     if (btn) {
       btn.classList.add("done");

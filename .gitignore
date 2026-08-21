@@ -13,3 +13,6 @@ __pycache__/
 
 # 공유 미리보기 확인용 출력 (tools/preview-share.py)
 share-preview.png
+
+# wrangler 로컬 상태·캐시 (계정 정보가 들어간다)
+.wrangler/

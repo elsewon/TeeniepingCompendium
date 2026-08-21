@@ -1,0 +1,16 @@
+name = "teenieping-counter"
+main = "counter.js"
+compatibility_date = "2026-08-01"
+
+# 숫자를 셀 수 있는 출처. 여러 개면 쉼표로 구분한다.
+[vars]
+ALLOW_ORIGIN = "https://elsewon.github.io"
+
+[[durable_objects.bindings]]
+name = "COUNTER"
+class_name = "Counter"
+
+# 무료 플랜에서는 SQLite 기반 Durable Object 만 만들 수 있다
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Counter"]

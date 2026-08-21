@@ -216,6 +216,29 @@ a { color: inherit; text-decoration: none; }
 /* 상세 태그는 카드와 달리 줄바꿈을 허용한다 (폭이 좁고 네 개까지 붙는다) */
 .detail-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 .detail-tags .tag { font-size: 12.5px; padding: 4px 10px; }
+
+/* ===== 좋아요 =====
+   카드 맨 아래를 가로지르는 띠. 그림·이름과 한 덩어리로 읽히고 누르는 자리가
+   카드 폭만큼 넓다 (작은 손으로 누르는 페이지라 면적이 곧 쓰기 쉬움이다).
+   .detail-card 가 overflow: hidden 이라 아래 모서리는 알아서 둥글게 잘린다.
+   누르기 전에는 하트를 흐리게 두어 "아직 안 눌렀다" 를 색으로 알린다.
+   되돌리는 길은 없다 (worker/counter.js 참고). */
+.like-btn {
+  display: flex; width: 100%; align-items: center; justify-content: center; gap: 8px;
+  padding: 13px; cursor: pointer;
+  border: 0; border-top: 1px solid var(--line); border-radius: 0;
+  background: transparent;
+  font-family: inherit; font-weight: 800; font-size: 15px; color: var(--pink);
+  transition: background .15s;
+}
+/* [hidden] 은 UA 스타일이라 위의 display 에 밀린다. 눌러도 아무 일이 없는 버튼이
+   Worker 없이 남지 않도록 여기서 다시 끈다. */
+.like-btn[hidden] { display: none; }
+.like-btn:hover { background: #fff0f6; }
+.like-btn .like-heart { font-size: 18px; filter: grayscale(1); opacity: .5; transition: .15s; }
+.like-btn.liked { background: var(--pink-soft); color: #c02d68; }
+.like-btn.liked .like-heart { filter: none; opacity: 1; }
+.like-count { font-size: 16px; color: var(--ink); font-variant-numeric: tabular-nums; }
 .info-block { margin-bottom: 18px; }
 .info-block h3 {
   font-size: 14px; color: var(--pink); margin: 0 0 6px; font-weight: 800;
@@ -360,6 +383,170 @@ a.rel-item:hover { transform: translateY(-2px); border-color: var(--pink); box-s
 }
 .redirect-note .btn { margin-top: 6px; }
 
+/* ===== 인기 순위 ===== */
+.rank { padding-block: 26px 70px; text-align: center; }   /* 좌우는 .wrap 이 담당 */
+.rank-tabs { display: flex; justify-content: center; gap: 8px; margin: 14px 0 0; }
+.rank-nav { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 16px 0 14px; }
+.rank-range { color: var(--ink); font-size: 15px; font-weight: 800; min-width: 150px; }
+.rank-arrow {
+  width: 34px; height: 34px; display: grid; place-items: center;
+  border: 2px solid var(--line); border-radius: 999px;
+  background: var(--card); color: var(--ink-soft);
+  font-size: 16px; font-weight: 800; cursor: pointer; transition: .18s;
+}
+.rank-arrow:hover:not(:disabled) { border-color: var(--pink); color: var(--pink); }
+.rank-arrow:disabled { opacity: .35; cursor: default; }
+/* 조회·좋아요·공유 순위 — 화면 폭과 상관없이 한 단으로 위에서 아래로 늘어놓는다.
+   두 단으로 나누면 세 번째 목록만 다음 줄에 홀로 남아 짝이 맞지 않는다.
+
+   폭은 한 줄에 필요한 최소값(430px)에 고정하고 가운데 정렬한다. 넓은 화면에서
+   .wrap(1080px)까지 늘리면 이름과 숫자 사이만 벌어져 눈이 그 빈 곳을 건너뛰어야 한다.
+     내림 16 + 순위 60 + (10 + 그림 54) + 8 + 이름·태그 160 + 10 + 숫자 85 + 16 ≈ 430
+   좁은 화면에서는 max-width 라 알아서 줄어든다.
+   (이름 글자 크기나 순위 칸 폭을 바꾸면 이 값도 같이 손봐야 한다) */
+.rank-cols {
+  display: grid; grid-template-columns: 1fr; gap: 20px;
+  max-width: 430px; margin: 0 auto;
+}
+.rank-cols h2 { font-size: 17px; margin: 8px 0 10px; }
+/* 빈 목록·불러오는 중 문구. .empty 기본값(60px)은 목록 페이지처럼 화면 하나를
+   통째로 채울 때를 위한 값이라, 목록이 셋이나 세로로 놓이는 여기서는 과하다
+   (세 기간 모두 비면 여백만 360px 이 된다). 방문 경로 목록도 같은 이유로 줄여 뒀다. */
+.rank-cols .empty { padding: 18px 16px; }
+/* 간격은 요소마다 따로 준다. 행 전체에 gap 하나를 쓰면 순위↔그림만 좁힐 수 없어
+   음수 마진 같은 편법이 필요해진다. 아래 margin-left 세 값이 각 사이의 간격이다. */
+.rank-row {
+  display: flex; align-items: center; text-align: left;
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-sm);
+  padding: 10px 16px; margin-bottom: 8px; box-shadow: var(--shadow); transition: .18s;
+}
+.rank-row:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
+/* 숫자와 변동을 나란히. 둘 다 자리를 고정해 두어야 행끼리 자릿수가 맞고,
+   변동 표시가 없는 기간에도 그림 위치가 그대로다.
+   칸 높이는 숫자가 정하므로(변동은 더 작다) 숫자가 그림과 수직 가운데로 맞는다. */
+.rank-no {
+  width: 60px; flex: 0 0 auto;
+  display: flex; align-items: center;
+}
+.rank-no b {
+  width: 34px; text-align: center;   /* "10"(29px) 이 들어갈 만큼 */
+  font-weight: 800; font-size: 28px; color: var(--pink);
+  font-variant-numeric: tabular-nums; line-height: 1.1;
+}
+/* 직전 기간 대비 오르내림 (오름=붉은색, 내림=푸른색). 숫자 오른쪽 고정 폭 자리에
+   놓는다 — 가장 넓은 "신규"(20px)와 "▲12"(24px) 이 들어갈 만큼. */
+.rank-delta {
+  font-style: normal; font-size: 11px; font-weight: 800; letter-spacing: -.02em;
+  width: 26px; text-align: center; line-height: 1.2;
+}
+.rank-delta.up { color: #d0365e; }
+.rank-delta.down { color: #2b6f9c; }
+.rank-delta.same { color: var(--ink-soft); }
+.rank-delta.new { color: #6b46c1; }
+.rank-thumb { width: 54px; height: 54px; flex: 0 0 auto; margin-left: 10px; }  /* 순위 ↔ 그림 */
+.rank-thumb img, .rank-thumb svg { width: 100%; height: 100%; object-fit: contain; display: block; }
+/* 이름·태그 묶음과 숫자를 한 덩어리로 묶어 폭에 따라 알아서 접히게 한다.
+   넓으면 [이름/태그 ……… 숫자] 한 줄, 좁으면 숫자가 다음 줄 오른쪽으로 내려간다.
+   숫자를 행의 직속 자식으로 두면 좁을 때 이름 자리를 끝까지 뺏는다. */
+.rank-body {
+  flex: 1 1 auto; min-width: 0; margin-left: 8px;                         /* 그림 ↔ 이름 */
+  display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px;
+}
+/* 태그는 이름 옆이 아니라 아래에 둔다 */
+.rank-text { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; min-width: 0; }
+.rank-name { font-weight: 800; font-size: 21px; line-height: 1.25; }
+.rank-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.rank-tags .tag { flex: 0 0 auto; white-space: nowrap; padding: 3px 7px; }
+/* 세 줄(좋아요·조회·공유)이 그림 높이(54px) 안에 들어가도록 줄 간격을 좁힌다.
+   본문 기본값 1.55 를 그대로 두면 67px 이 되어 행이 그만큼 커진다. */
+.rank-nums {
+  margin-left: auto; white-space: nowrap;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 1px;
+  color: var(--ink-soft); font-size: 13px; line-height: 1.25;
+}
+.rank-nums b { font-size: 16px; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+/* ===== 통계 그래프 ===== */
+/* 선 색은 dataviz 팔레트 1~3 슬롯. 어두운 배경용 단계는 따로 고른 값이다
+   (밝은 값을 그대로 쓰면 어두운 바탕에서 대비가 모자란다). */
+.chart-page {
+  padding-block: 26px 70px; text-align: center;
+  --series-1: #2a78d6;   /* 목록 */
+  --series-2: #eb6834;   /* 이름 맞추기 */
+  --series-3: #1baf7a;   /* 인기 순위 */
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .chart-page {
+    --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70;
+  }
+}
+/* 맨 위 요약 숫자 */
+.tiles {
+  list-style: none; margin: 16px 0 6px; padding: 0;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px;
+}
+.tiles li {
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-sm);
+  box-shadow: var(--shadow); padding: 14px 10px;
+}
+.tiles b {
+  display: block; font-size: 30px; font-weight: 800; line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.tiles span { display: block; margin-top: 3px; font-size: 12.5px; font-weight: 700; color: var(--ink-soft); }
+.tiles-note { color: var(--ink-soft); font-size: 12px; font-weight: 700; margin: 0 0 4px; }
+.chart-page h2 { font-size: 17px; margin: 20px 0 4px; text-align: center; }
+
+.chart-box {
+  margin: 16px 0 0; padding: 14px 10px 6px;
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: var(--radius); box-shadow: var(--shadow);
+}
+.chart-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; margin-bottom: 6px; }
+.legend-item {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: none; border: 0; padding: 4px 6px; border-radius: 8px;
+  color: var(--ink-soft); font-size: 12.5px; font-weight: 700; cursor: pointer;
+}
+.legend-item:hover { background: var(--bg); }
+.legend-item.off { opacity: .38; }
+.chart-plot { position: relative; }
+.chart-plot svg { width: 100%; height: auto; display: block; }
+.chart-plot .grid { stroke: var(--line); stroke-width: 1; }
+.chart-plot .tick { fill: var(--ink-soft); font-size: 11px; font-weight: 700; }
+.chart-plot .line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.chart-plot .end-label { font-size: 11px; font-weight: 800; }
+.chart-plot .crosshair { stroke: var(--ink-soft); stroke-width: 1; stroke-dasharray: 3 3; }
+.chart-plot .dot { stroke: var(--card); stroke-width: 2; }   /* 겹칠 때 서로 떨어져 보이게 */
+.chart-tip {
+  position: absolute; top: 6px; transform: translateX(-50%);
+  background: rgba(58, 43, 63, .93); color: #fff; border-radius: 12px;
+  padding: 8px 12px; font-size: 12px; font-weight: 700; text-align: left;
+  pointer-events: none; white-space: nowrap; box-shadow: var(--shadow);
+}
+.chart-tip b { display: block; margin-bottom: 4px; opacity: .85; }
+.chart-tip span { display: flex; align-items: center; gap: 6px; }
+.chart-tip i { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+.chart-actions { display: flex; justify-content: center; gap: 8px; margin-top: 14px; }
+
+/* 방문 경로 — 한 가지 값을 주소별로 견주는 것이라 막대는 모두 같은 색으로 둔다 */
+.inflow { margin-top: 26px; text-align: left; }
+
+.inflow .rank-tabs { margin-bottom: 12px; }
+.inflow-list { list-style: none; margin: 0; padding: 0; }
+.inflow-list li { display: flex; align-items: center; gap: 12px; padding: 7px 2px; }
+.inflow-name {
+  flex: 0 0 40%; min-width: 0; font-weight: 800; font-size: 14px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.inflow-bar { flex: 1 1 auto; height: 12px; background: var(--line); border-radius: 999px; overflow: hidden; }
+.inflow-bar i { display: block; height: 100%; background: var(--pink); border-radius: 999px; }
+.inflow-num {
+  flex: 0 0 auto; min-width: 52px; text-align: right;
+  font-weight: 800; font-variant-numeric: tabular-nums;
+}
+.inflow-list .empty { display: block; padding: 18px 0; }
+
 /* ===== 반응형 ===== */
 @media (max-width: 720px) {
   .wrap { padding: 0 14px; }
@@ -412,10 +599,32 @@ a.rel-item:hover { transform: translateY(-2px); border-color: var(--pink); box-s
   .choice-btn { padding: 12px; font-size: 16px; }
 }
 
+/* 내비 항목이 셋(랜덤핑·이름 맞추기·인기 순위)이라 폰에서는 자리가 모자란다.
+   로고만 남기고 "티니핑 도감" 글자를 감춘 뒤, 그래도 모자라면 내비만 가로로
+   스크롤되게 한다. 글자 길이를 재서 맞추는 대신 넘칠 때 알아서 밀리게 두는 편이
+   안전하다 — 기기·글꼴에 따라 폭이 달라지기 때문. (공유 버튼은 오른쪽에 그대로) */
+@media (max-width: 520px) {
+  .brand span:last-child { display: none; }
+  .nav {
+    min-width: 0; overflow-x: auto;
+    scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  }
+  .nav::-webkit-scrollbar { display: none; }
+  .nav a { flex: 0 0 auto; padding: 6px 9px; font-size: 12.5px; }
+}
+
 /* 아주 좁은 화면 */
 @media (max-width: 380px) {
   .grid { grid-template-columns: 1fr; }
   .nav a { padding: 6px 9px; font-size: 12px; }
+  .rank-row { padding: 10px 12px; }
+  .rank-thumb { width: 46px; height: 46px; }
+  .rank-body { margin-left: 6px; }
+  .rank-no { width: 52px; }
+  .rank-no b { width: 28px; font-size: 24px; }
+  .rank-delta { width: 24px; }
+  .rank-name { font-size: 18px; }
+  .rank-nums { font-size: 12px; }
   .site-header .wrap { gap: 6px; }
 }
 
@@ -425,4 +634,9 @@ a.rel-item:hover { transform: translateY(-2px); border-color: var(--pink); box-s
   border-top: 1px solid var(--line); margin-top: 10px;
 }
 .footer p { margin: 3px 0; }
+/* 방문·공유 숫자 — 통계 서버 주소를 넣기 전에는 js/stats.js 가 감춰 둔다 */
+.footer .stats { margin-bottom: 12px; opacity: .8; font-variant-numeric: tabular-nums; }
+/* 통계 링크는 주변 글자와 같은 평문으로 보이게 (푸터의 일반 a 규칙을 되돌린다) */
+.footer .stats-link { color: inherit; font-weight: inherit; text-decoration: none; }
+.footer .stats-link:hover { color: var(--pink); }
 .footer a { color: #c02d68; font-weight: 700; text-decoration: underline; }

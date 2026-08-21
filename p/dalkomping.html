@@ -31,6 +31,7 @@
       <nav class="nav">
         <a href="#" data-random title="아무 티니핑이나 보여줘!">🔮 랜덤핑</a>
         <a href="../quiz.html">🧩 이름 맞추기</a>
+        <a href="../rank.html">🏆 인기 차트</a>
       </nav>
       <button class="share-btn" type="button" data-share aria-label="이 페이지 공유하기" title="이 페이지 공유하기">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
@@ -78,6 +79,12 @@
             <span class="tag">달콤함</span>
           </div>
         </div>
+        <!-- 카드 맨 아래 띠. 숫자를 받아 온 뒤에 js/page.js 가 보여 준다 -->
+        <button class="like-btn" type="button" data-like hidden aria-pressed="false">
+          <span class="like-heart" aria-hidden="true">💖</span>
+          <span class="like-text">좋아요</span>
+          <b class="like-count">0</b>
+        </button>
       </div>
       <div class="detail-info">
         <div class="info-block">
@@ -97,6 +104,9 @@
   </main>
 
   <footer class="footer">
+    <p class="stats" id="statsBox" hidden>
+      <a class="stats-link" href="../stats.html">통계</a> · <span id="stats"></span>
+    </p>
     <p><a href="mailto:papa.ping@icloud.com">papa.ping@icloud.com</a> · 2026 · 딸에게 보여주려고 만든 비공식 팬 페이지입니다.
        광고나 후원 등 어떤 형태의 수익화도 하지 않습니다.</p>
     <p>캐릭터 이름·이미지 등 모든 권리는 <a href="https://samg.net/" rel="noopener nofollow" target="_blank">SAMG엔터테인먼트</a>에 있습니다.
@@ -106,6 +116,7 @@
 
   <script src="../data/ping-ids.js"></script>
   <script src="../js/util.js"></script>
+  <script src="../js/stats.js"></script>
   <script src="../js/page.js"></script>
 </body>
 </html>

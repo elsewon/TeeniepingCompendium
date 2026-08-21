@@ -292,11 +292,12 @@ def main():
         build_card(os.path.join(ROOT, "images", t["id"] + ".png"),
                    t["nameKo"], tags, os.path.join(OUT_DIR, t["id"] + ".jpg"))
 
-    # 목록·퀴즈 페이지는 같은 표지를 쓰고 제목만 다르게 한다
+    # 목록·퀴즈·순위는 같은 표지를 쓰고 제목만 다르게 한다
     build_cover(os.path.join(OUT_DIR, "site.jpg"))
     build_cover(os.path.join(OUT_DIR, "quiz.jpg"), "이름 맞추기")
+    build_cover(os.path.join(OUT_DIR, "rank.jpg"), "인기 차트")
 
-    print("카드 %d장 생성 → images/og/" % (len(data) + 2))
+    print("카드 %d장 생성 → images/og/" % (len(data) + 3))
 
 
 if __name__ == "__main__":
