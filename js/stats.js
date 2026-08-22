@@ -73,18 +73,21 @@ function alreadyVisited() {
 
 /* ===== 방문 경로 =====
    어디를 거쳐 들어왔는지 한 세션에 한 번만 센다. 주소(호스트)를 그대로 보낸다.
-   공유 버튼을 거친 링크와 리퍼러가 없는 경우는 주소가 없어 _share / _direct 로 대신한다.
-   메신저는 리퍼러를 안 보내는 경우가 많아 상당수가 _direct 로 떨어진다. */
+   공유 버튼을 거친 링크는 주소가 없어 _share 로 대신한다.
+
+   리퍼러가 없으면(앱·북마크·주소 입력·메신저 상당수) 아예 세지 않는다 — null 을
+   돌려준다. 어디서 왔는지 알려 주는 것이 없어 목록에 쓸 데가 없는데, 카카오톡
+   같은 인앱 브라우저가 리퍼러를 안 보내 수만 가장 크게 쌓였다.
+   사이트 안에서 넘어온 것도 방문 경로가 아니므로 같이 뺀다. */
 function referralHost() {
   if (new URLSearchParams(location.search).get("s") === "1") return "_share";
   const r = document.referrer;
-  if (!r) return "_direct";
+  if (!r) return null;
   try {
     const host = new URL(r).host.toLowerCase().replace(/^www\./, "");
-    // 사이트 안에서 넘어온 것은 방문 경로가 아니다
-    return host === location.host.toLowerCase().replace(/^www\./, "") ? "_direct" : host;
+    return host === location.host.toLowerCase().replace(/^www\./, "") ? null : host;
   } catch {
-    return "_direct";
+    return null;
   }
 }
 
@@ -105,7 +108,8 @@ async function countReferral() {
   } catch { /* 저장소가 막히면 매번 센다 */ }
   const host = referralHost();
   dropShareMark();
-  if (counted) return;
+  // 세션 표시는 셀 것이 없어도 남겨 둔다 — "한 세션에 한 번" 이라는 규칙은 그대로다
+  if (counted || !host) return;
   await callStats("/hit?type=ref&host=" + encodeURIComponent(host), { method: "POST" });
 }
 

@@ -69,8 +69,11 @@ const PAGE_KINDS = ["visit", "share", "like"];
 const SCORE = { like: 10, share: 5, visit: 1 };
 const totalScore = (row) =>
   PAGE_KINDS.reduce((sum, kind) => sum + SCORE[kind] * (row[kind] || 0), 0);
-/* 방문 경로는 주소(호스트)를 그대로 열쇠에 쓴다. 공유 버튼을 거친 링크와
-   리퍼러가 없는 경우는 주소가 없으므로 _share / _direct 로 대신한다.
+/* 방문 경로는 주소(호스트)를 그대로 열쇠에 쓴다. 공유 버튼을 거친 링크는
+   주소가 없으므로 _share 로 대신한다.
+   리퍼러가 없는 방문(_direct)은 세지 않는다 — 브라우저도 보내지 않고(js/stats.js)
+   여기서도 받지 않는다. 옛 js 가 캐시에 남은 브라우저가 보내더라도 조용히
+   흘려보낸다(세지 않을 뿐 오류는 아니다).
    날짜별로만 쌓고(ref:d:<날짜>:<주소>) 조회할 때 최근 N일을 합친다 —
    달력 주·달로 쌓으면 "최근 7일" 같은 구간을 만들 수 없다. */
 
@@ -81,7 +84,7 @@ const HOST_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)
 function cleanHost(value) {
   if (!value) return null;
   const v = String(value).toLowerCase();
-  if (v === "_share" || v === "_direct") return v;
+  if (v === "_share") return v;
   return v.length <= 63 && HOST_RE.test(v) ? v : null;
 }
 

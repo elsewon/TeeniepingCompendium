@@ -14,23 +14,27 @@ const CHART_API = "https://teenieping-counter.elsewon.workers.dev";
 let days = 7;
 
 /* 색은 dataviz 팔레트의 1~3번 슬롯. 세 색은 모든 짝에서 검사를 통과한다. */
+/* 켜고 끄는 것은 낱낱의 선이 아니라 '영역'과 '선 모양'이다. 범례가 색 3개와
+   선 모양 2개로만 되어 있으므로(drawLegend) 그 둘의 곱이 곧 보이는 선이 된다. */
 const SCOPES = [
-  { key: "list", label: "목록" },
-  { key: "quiz", label: "이름 맞추기" },
-  { key: "rank", label: "인기 차트" },
+  { key: "list", label: "목록", on: true },
+  { key: "quiz", label: "이름 맞추기", on: true },
+  { key: "rank", label: "인기 차트", on: true },
 ];
 const KINDS = [
-  { key: "visit", label: "방문", dash: "" },
-  { key: "share", label: "공유", dash: "5 4" },
+  { key: "visit", label: "방문", dash: "", on: true },
+  { key: "share", label: "공유", dash: "5 4", on: true },
 ];
-const SERIES = SCOPES.flatMap((s, i) =>
+const SERIES = SCOPES.flatMap((sc, i) =>
   KINDS.map((k) => ({
-    id: `${s.key}:${k.key}`,
-    label: `${s.label} ${k.label}`,
+    id: `${sc.key}:${k.key}`,
+    label: `${sc.label} ${k.label}`,
     color: `var(--series-${i + 1})`,
     dash: k.dash,
-    on: true,
+    scope: sc,
+    kind: k,
   })));
+const shownSeries = () => SERIES.filter((s) => s.scope.on && s.kind.on);
 
 const el = {
   spanTabs: document.getElementById("spanTabs"),
@@ -42,9 +46,10 @@ const el = {
   refTabs: document.getElementById("refTabs"),
 };
 
-/* 주소가 없는 두 경우만 이름을 붙여 준다 */
-const REF_LABEL = { _share: "공유 링크", _direct: "알 수 없음" };
-let refDays = 1;
+/* 주소가 없는 공유 링크에만 이름을 붙여 준다.
+   리퍼러가 없는 방문은 아예 세지 않으므로(js/stats.js) 여기 올 일이 없다. */
+const REF_LABEL = { _share: "공유 링크" };
+let refDays = 7;        // 첫 칸(최근 7일)과 맞춘다
 
 let data = null;
 
@@ -70,7 +75,7 @@ function niceMax(v) {
 }
 
 function draw() {
-  const shown = SERIES.filter((s) => s.on);
+  const shown = shownSeries();
   const all = shown.flatMap((s) => valuesOf(s.id));
   const max = niceMax(Math.max(1, ...all));
   const n = data.dates.length;
@@ -146,15 +151,34 @@ function hookHover({ x, y, n, shown }) {
   hit.addEventListener("touchend", leave);
 }
 
-/* ── 범례 · 표 ───────────────────────────────── */
+/* ── 범례 · 표 ─────────────────────────────────
+   색 3개와 선 모양 2개로만 적는다. 이 그래프가 여섯 줄을 나누는 규칙이 그대로
+   (영역 3색 × 방문/공유 2모양)이므로, 범례도 그 두 벌만 보여 주면 된다.
+   여섯 칸에 "목록 방문 · 목록 공유 …" 를 다 적으면 영역 이름을 여섯 번
+   되풀이하게 되어 폰에서 세 줄로 접혔다. 지금은 360px 폰까지 한 줄, 그보다 좁아도
+   두 줄이다.
+
+   누르면 그 벌이 통째로 켜지고 꺼진다 — 색을 끄면 그 영역의 두 줄이, 선 모양을
+   끄면 모든 영역의 그 줄이 사라진다. 둘을 함께 쓰면 한 줄만 남길 수도 있다. */
 function drawLegend() {
-  el.legend.innerHTML = SERIES.map((s, i) => `
-    <button class="legend-item${s.on ? "" : " off"}" data-i="${i}" type="button">
-      <svg width="20" height="10" aria-hidden="true">
-        <line x1="1" y1="5" x2="19" y2="5" stroke="${s.color}" stroke-width="2"
-          ${s.dash ? `stroke-dasharray="${s.dash}"` : ""}/>
-      </svg>${s.label}
+  // 모양 칸에만 표식을 그린다. 색 칸은 이름 자체를 그 색으로 적는다 —
+  // 그래프에서 선 끝에 붙는 영역 이름도 같은 색 글자라, 둘이 곧바로 이어진다.
+  const line = (dash) => `<svg width="20" height="10" aria-hidden="true">
+      <line x1="1" y1="5" x2="19" y2="5" stroke="var(--ink-soft)" stroke-width="2"
+        ${dash ? `stroke-dasharray="${dash}"` : ""}/></svg>`;
+
+  const colors = SCOPES.map((sc, i) =>
+    `<button class="legend-item legend-color${sc.on ? "" : " off"}" data-scope="${sc.key}"
+      type="button" style="color: var(--series-${i + 1})">${sc.label}</button>`).join("");
+
+  // 모양 칸은 색을 쓰지 않는다 — 여기서 알려 주는 것은 모양뿐이다
+  const shapes = KINDS.map((k) =>
+    `<button class="legend-item${k.on ? "" : " off"}" data-kind="${k.key}" type="button">
+      ${line(k.dash)}${k.label}
     </button>`).join("");
+
+  el.legend.innerHTML = `<div class="legend-set">${colors}</div>` +
+    `<div class="legend-set">${shapes}</div>`;
 }
 
 /* 지금 보고 있는 그대로를 CSV 로. 엑셀이 한글을 깨뜨리지 않도록 BOM 을 붙인다. */
@@ -183,6 +207,7 @@ async function loadInflow() {
     el.inflow.innerHTML = `<li class="empty">불러오지 못했어요 🥲</li>`;
     return;
   }
+
   if (!rows.length) {
     el.inflow.innerHTML = `<li class="empty">이 기간에는 기록이 없어요 🌱</li>`;
     return;
@@ -228,11 +253,13 @@ function redraw() {
 }
 
 el.legend.addEventListener("click", (e) => {
-  const btn = e.target.closest("[data-i]");
+  const btn = e.target.closest("[data-scope], [data-kind]");
   if (!btn) return;
-  const s = SERIES[Number(btn.dataset.i)];
-  if (s.on && SERIES.filter((x) => x.on).length === 1) return;   // 마지막 하나는 남긴다
-  s.on = !s.on;
+  const list = btn.dataset.scope ? SCOPES : KINDS;
+  const item = list.find((x) => x.key === (btn.dataset.scope || btn.dataset.kind));
+  // 한 벌을 통째로 끄면 그릴 것이 없어진다 — 각 벌의 마지막 하나는 남긴다
+  if (item.on && list.filter((x) => x.on).length === 1) return;
+  item.on = !item.on;
   redraw();
 });
 
