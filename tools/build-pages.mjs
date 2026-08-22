@@ -38,7 +38,7 @@ const sandbox = {
 };
 vm.createContext(sandbox);
 vm.runInContext(fs.readFileSync(path.join(ROOT, "js/util.js"), "utf8"), sandbox);
-const { imageMarkup } = sandbox;
+const { imageMarkup, speakBtnHTML, speakBlockBtnHTML } = sandbox;
 
 /* ── index.html 의 머리말·꼬리말 ──────────────────────────── */
 const indexHtml = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
@@ -153,7 +153,8 @@ ${HEADER}
       <div class="detail-card">
         <div class="detail-image">${imageMarkup(t, 320, UP)}</div>
         <div class="detail-head">
-          <h1>${esc(t.nameKo)}</h1>
+          <!-- 이름 옆 읽어 주기 버튼 (js/util.js) -->
+          <h1><span>${esc(t.nameKo)}</span>${speakBtnHTML(t.nameKo)}</h1>
           <div class="detail-tags">
             <span class="tag season">${esc(t.season)}</span>
             <span class="tag ${gradeClass}">${esc(t.grade)}</span>
@@ -171,11 +172,12 @@ ${HEADER}
       <div class="detail-info">
         <div class="info-block">
           <h3>🪄 마법</h3>
-          <p>${t.magic ? esc(t.magic) : pending}</p>
+          <!-- 글 끝의 읽어 주기 버튼은 문단 안에 넣는다 — 누르면 감싼 문단의 글을 읽는다 -->
+          <p>${t.magic ? esc(t.magic) + speakBlockBtnHTML("마법 설명 읽어 주기") : pending}</p>
         </div>
         <div class="info-block">
           <h3>📖 에피소드 ${t.episode ? `<span class="ep-badge">${esc(t.episode)}</span>` : ""}</h3>
-          <p>${t.story ? esc(t.story) : pending}</p>
+          <p>${t.story ? esc(t.story) + speakBlockBtnHTML("에피소드 줄거리 읽어 주기") : pending}</p>
         </div>
         <div class="info-block">
           <h3>🔗 관계</h3>
@@ -196,18 +198,43 @@ ${FOOTER}
 `;
 }
 
-/* ── 쓰기 ────────────────────────────────────────────── */
-fs.rmSync(OUT_DIR, { recursive: true, force: true });
+/* ── 쓰기 ──────────────────────────────────────────────
+ *
+ * 폴더를 통째로 지우고 다시 쓰지 않는다. 이 저장소는 iCloud Drive 안에 있어,
+ * 지우고 같은 이름으로 다시 만드는 사이 동기화가 끼면 아이클라우드가 양쪽을
+ * 서로 다른 파일로 보고 "고고핑 2.html" 같은 충돌 사본을 남긴다.
+ *
+ * 그래서 같은 이름에 덮어쓰고, 명단에서 빠진 것만 따로 지운다.
+ * 내용이 그대로인 파일은 아예 건드리지 않는다 — 손댄 시각만 바뀌어도
+ * 아이클라우드가 157개를 통째로 다시 올린다. */
 fs.mkdirSync(OUT_DIR, { recursive: true });
+
+const keep = new Set(DATA.map((t) => `${t.id}.html`));
+let written = 0;
 for (const t of DATA) {
-  fs.writeFileSync(path.join(OUT_DIR, `${t.id}.html`), page(t), "utf8");
+  const file = path.join(OUT_DIR, `${t.id}.html`);
+  const html = page(t);
+  let old = null;
+  try { old = fs.readFileSync(file, "utf8"); } catch { /* 처음 만드는 파일 */ }
+  if (old === html) continue;
+  fs.writeFileSync(file, html, "utf8");
+  written++;
 }
 
-/* 랜덤핑용 id 목록 — 개별 페이지는 데이터 전체를 싣지 않으므로 이것만 받는다 */
-fs.writeFileSync(
-  path.join(ROOT, "data/ping-ids.js"),
-  "/* 자동 생성 (node tools/build-pages.mjs) — 랜덤핑에 쓰는 id 목록 */\n" +
-  `window.PING_IDS = ${JSON.stringify(DATA.map((t) => t.id))};\n`,
-  "utf8");
+/* 명단에서 빠진 것 정리 — 이름이 바뀌어 남은 옛 페이지, 아이클라우드 충돌 사본 등 */
+const stale = fs.readdirSync(OUT_DIR).filter((f) => f.endsWith(".html") && !keep.has(f));
+for (const f of stale) fs.rmSync(path.join(OUT_DIR, f));
 
-console.log(`개별 페이지 ${DATA.length}개 생성 → p/<id>.html`);
+/* 랜덤핑용 id 목록 — 개별 페이지는 데이터 전체를 싣지 않으므로 이것만 받는다 */
+const idsPath = path.join(ROOT, "data/ping-ids.js");
+const ids =
+  "/* 자동 생성 (node tools/build-pages.mjs) — 랜덤핑에 쓰는 id 목록 */\n" +
+  `window.PING_IDS = ${JSON.stringify(DATA.map((t) => t.id))};\n`;
+let oldIds = null;
+try { oldIds = fs.readFileSync(idsPath, "utf8"); } catch { /* 처음 만드는 파일 */ }
+if (oldIds !== ids) fs.writeFileSync(idsPath, ids, "utf8");
+
+console.log(
+  `개별 페이지 ${DATA.length}개 → p/<id>.html ` +
+  `(새로 쓴 것 ${written}개, 그대로 둔 것 ${DATA.length - written}개)`);
+if (stale.length) console.log(`명단에 없어 지운 것 ${stale.length}개: ${stale.join(", ")}`);

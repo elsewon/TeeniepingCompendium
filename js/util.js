@@ -215,3 +215,118 @@ document.addEventListener("click", (e) => {
   e.preventDefault();
   sharePage(btn);
 });
+
+/* ===== 이름 읽어 주기 =====
+   이름 옆 동그란 버튼. 한글을 아직 못 읽는 아이도 이름을 확인할 수 있게
+   브라우저 음성 합성(Web Speech)으로 이름만 짧게 읽어 준다.
+   상세·퀴즈·인기 차트 세 곳이 같은 버튼을 쓰므로 여기 한 곳에 둔다.
+
+   버튼을 <a>·<button> 안에 넣으면 안 된다 (누를 수 있는 것 안의 누를 수 있는 것).
+   그래서 부르는 쪽은 언제나 이름 옆 '형제' 자리에 놓는다. */
+
+/* 아이콘은 이모지가 아니라 인라인 SVG 다. 헤더 공유 버튼과 같은 방식 —
+   currentColor 를 따라가므로 분홍 테마에 맞고, 기기에 그 이모지가 있는지
+   따질 일도 없다 (🗣️ 는 글꼴에 따라 두부로 나오고, 작게 줄이면 어두운
+   덩어리로 뭉개진다). 물결 두 줄은 읽는 동안 차례로 밝아진다 — css 의 speak-wave. */
+const SPEAK_ICON =
+  '<svg class="speak-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor"' +
+  ' stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<path d="M11.8 5 7.3 9H4.3v6h3L11.8 19z" fill="currentColor"/>' +
+  '<path class="w1" d="M15.3 9.2a4 4 0 0 1 0 5.6"/>' +
+  '<path class="w2" d="M18 6.6a8 8 0 0 1 0 10.8"/></svg>';
+
+/* 버튼 마크업. 이름은 속성에 들어가므로 꺾쇠·따옴표만 막아 준다. */
+function speakBtnHTML(name, cls) {
+  const n = String(name || "")
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  return `<button class="speak-btn${cls ? " " + cls : ""}" type="button" data-speak="${n}"` +
+    ` aria-label="${n} 이름 듣기" title="이름 듣기">${SPEAK_ICON}</button>`;
+}
+
+/* 글 덩어리(마법 설명·에피소드 줄거리)를 읽어 주는 버튼. 문단 맨 끝에 들어간다.
+   글을 data-speak 에 옮겨 적지 않는다 — 설명은 수백 자라 그대로 베끼면 페이지가
+   그만큼 무거워진다(157장을 미리 만들어 두므로 더 그렇다). 값 없는 data-speak 로
+   표시만 해 두고, 누를 때 감싸고 있는 문단의 글을 읽는다. */
+function speakBlockBtnHTML(label) {
+  const l = String(label || "읽어 주기")
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  return `<button class="speak-btn speak-block" type="button" data-speak` +
+    ` aria-label="${l}" title="${l}">${SPEAK_ICON}</button>`;
+}
+
+/* 읽어 주기.
+   - 읽는 중에 같은 버튼을 누르면 멈춘다.
+   - 읽는 중에 다른 버튼을 누르면 읽던 것을 멈추고 새 이름을 읽는다.
+
+   seq 는 뒤늦게 도착한 신호를 걸러 내는 표. cancel() 이 뒤늦게 부르는 onend 나
+   시간으로 걸어 둔 보험이, 이미 다음 이름을 읽는 중에 깨어나 남의 상태를
+   끄는 일을 막는다. */
+let speakingBtn = null;
+let speakSeq = 0;
+
+function stopSpeaking() {
+  speakSeq++;                     // 이 뒤에 오는 옛 신호는 모두 무시한다
+  if (speakingBtn) speakingBtn.classList.remove("speaking");
+  speakingBtn = null;
+  try { window.speechSynthesis.cancel(); } catch { /* 못 멈춰도 표시는 되돌린다 */ }
+}
+
+function speakText(text, btn) {
+  const synth = window.speechSynthesis;
+  if (!synth || !text) return;
+
+  const again = speakingBtn != null && speakingBtn === btn;
+  // 아래 보험이 먼저 깨어나 표시만 꺼진 뒤라도 겹쳐 읽지 않도록 실제 상태도 함께 본다
+  if (speakingBtn || synth.speaking) stopSpeaking();
+  if (again) return;              // 같은 버튼을 다시 누른 것 = 멈추기
+
+  const u = new SpeechSynthesisUtterance(String(text));
+  u.lang = "ko-KR";
+  u.rate = 0.9;     // 아이가 따라 들을 수 있게 조금 천천히
+  u.pitch = 1.15;
+  const ko = (synth.getVoices() || []).find((v) => /^ko/i.test(v.lang || ""));
+  if (ko) u.voice = ko;
+
+  const token = ++speakSeq;
+  const done = () => {
+    if (token !== speakSeq) return;   // 이미 멈췄거나 다음 이름으로 넘어갔다
+    if (speakingBtn) speakingBtn.classList.remove("speaking");
+    speakingBtn = null;
+  };
+  u.onend = done;
+  u.onerror = done;
+  // onend 를 주지 않는 브라우저가 있어 시간으로도 끈다. 이름 한 낱말과
+  // 수백 자짜리 줄거리는 걸리는 시간이 아주 다르므로 글 길이에 맞춰 잡는다.
+  setTimeout(done, Math.max(5000, String(text).length * 600));
+
+  speakingBtn = btn || null;
+  if (btn) btn.classList.add("speaking");
+  // 취소 직후라도 speak 는 곧바로 부른다 — 사파리는 누른 그 흐름 안에서
+  // 불러야 소리를 내 준다 (setTimeout 으로 미루면 무시될 수 있다).
+  synth.speak(u);
+}
+
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-speak]");
+  if (!btn) return;
+  e.preventDefault();
+  // 이 처리기는 document 에 달려 있어, 여기 닿았을 때는 중간 요소의 처리기가
+  // 이미 지나간 뒤다. 안쪽에 든 버튼이 바깥을 누른 것처럼 보이는 일은
+  // 감싼 쪽에서 막는다 (js/quiz.js 의 [data-speak] 확인).
+  // 값이 없는 data-speak 는 "나를 감싼 문단을 읽어라"는 뜻이다.
+  // 버튼 안에는 그림(svg)뿐이라 문단 글에 군더더기가 섞이지 않는다.
+  const text = btn.dataset.speak ||
+    (btn.parentElement ? btn.parentElement.textContent.trim() : "");
+  speakText(text, btn);
+});
+
+/* 목소리를 낼 수 없는 브라우저에서는 버튼을 아예 감춘다 (css 의 .no-tts).
+   눌러도 아무 일이 없는 버튼이 남는 편보다 안 보이는 편이 낫다 — 좋아요와 같은 판단. */
+if (typeof document !== "undefined" && document.documentElement) {
+  if (window.speechSynthesis) {
+    // 크롬은 첫 getVoices() 가 비어 있다. 미리 한 번 불러 목록을 채워 둔다.
+    try { window.speechSynthesis.getVoices(); } catch { /* 없어도 lang 만으로 읽는다 */ }
+  } else {
+    document.documentElement.classList.add("no-tts");
+  }
+}

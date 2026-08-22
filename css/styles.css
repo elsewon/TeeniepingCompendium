@@ -15,6 +15,12 @@
   --shadow-hover: 0 16px 40px rgba(255, 111, 165, 0.28);
   --radius: 22px;
   --radius-sm: 14px;
+  /* 이름 칸·선택지·정답 행이 함께 쓰는 지름. 높이의 절반보다 큰 값을 주면
+     브라우저가 높이에 맞춰 깎아 주므로, 높이가 서로 달라도 셋 다 캡슐이 된다 —
+     선택지가 정답 행으로 바뀔 때 겉모양이 그대로인 이유다.
+     (한때 66px/2 = 33px 을 줬는데, 그보다 높은 정답 행에서는 위아래가 곧은
+     둥근 네모가 되어 캡슐이 아니었다.) */
+  --radius-pill: 999px;
   --font: "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
 }
 
@@ -97,6 +103,41 @@ a { color: inherit; text-decoration: none; }
   opacity: 0; transform: translateY(-6px); transition: opacity .18s, transform .18s;
 }
 .toast.show { opacity: 1; transform: translateY(0); }
+
+/* ===== 이름 읽어 주기 =====
+   이름 옆 동그란 버튼. 상세·퀴즈·인기 차트가 같은 모양을 쓴다.
+   아이콘은 인라인 SVG 스피커다 — 헤더 공유 버튼과 같은 방식이라 색이
+   currentColor 를 따라가고, 이모지처럼 기기마다 모양이 달라지지 않는다.
+   읽는 동안에는 물결 두 줄이 차례로 밝아진다 — 소리가 나지 않는 곳에서도
+   지금 읽는 중임이 보이게.
+   크기는 --sz 하나로 정한다 (아이콘은 그 절반). 놓이는 자리마다 값만 바꾼다. */
+.speak-btn {
+  --sz: 30px;
+  flex: 0 0 auto; width: var(--sz); height: var(--sz); padding: 0;
+  display: inline-grid; place-items: center;
+  border: 2px solid var(--line); border-radius: 999px;
+  background: var(--card); color: var(--ink-soft);
+  font-family: inherit; line-height: 1;
+  cursor: pointer; transition: .16s;
+}
+.speak-ico { width: calc(var(--sz) / 2); height: calc(var(--sz) / 2); display: block; }
+.speak-btn:hover { border-color: var(--pink); color: var(--pink); box-shadow: var(--shadow); }
+.speak-btn:active { transform: scale(0.92); }
+/* 읽는 동안. 같은 버튼을 다시 누르면 멈추고, 다른 버튼을 누르면 그리로 넘어간다
+   (js/util.js 의 speakName) — 그래서 손 모양은 그대로 둔다. */
+.speak-btn.speaking {
+  border-color: var(--pink); background: var(--pink-soft); color: var(--pink);
+}
+.speak-btn.speaking .w1 { animation: speak-wave .9s ease-in-out infinite; }
+.speak-btn.speaking .w2 { animation: speak-wave .9s ease-in-out .18s infinite; }
+@keyframes speak-wave { 0%, 100% { opacity: .2; } 45% { opacity: 1; } }
+/* 글 덩어리(마법·에피소드) 끝에 붙는 버튼. 문단 안에 인라인으로 들어가므로
+   본문 크기에 맞춰 줄이고, 글자 밑선에 맞춰 내려 앉힌다. */
+.speak-btn.speak-block { --sz: 24px; margin-left: 6px; vertical-align: -2px; }
+
+/* 음성 합성이 없는 브라우저 — js/util.js 가 <html> 에 no-tts 를 단다.
+   눌러도 아무 일이 없는 버튼이 남는 편보다 아예 안 보이는 편이 낫다. */
+.no-tts .speak-btn { display: none; }
 
 /* ===== 컨트롤(검색/필터) ===== */
 /* 헤더 아래에 달라붙어 목록만 스크롤되게 한다 (--header-h 는 헤더 높이) */
@@ -211,7 +252,11 @@ a { color: inherit; text-decoration: none; }
 .detail-image { padding: 5%; }
 .detail-image img, .detail-image svg { width: 100%; display: block; aspect-ratio: 1/1; object-fit: contain; }
 .detail-head { padding: 2px 18px 20px; }
-.detail-head h1 { font-size: 27px; margin: 0 0 2px; line-height: 1.25; }
+/* 이름 옆에 읽어 주기 버튼이 붙는다. 이름이 길어 두 줄이 되면 버튼도 따라 내려간다. */
+.detail-head h1 {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+  font-size: 27px; margin: 0 0 2px; line-height: 1.25;
+}
 .detail-head .en { color: var(--ink-soft); font-weight: 800; font-size: 15px; margin-bottom: 10px; }
 /* 상세 태그는 카드와 달리 줄바꿈을 허용한다 (폭이 좁고 네 개까지 붙는다) */
 .detail-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
@@ -294,31 +339,70 @@ a.rel-item:hover { transform: translateY(-2px); border-color: var(--pink); box-s
 /* 원본 비율이 제각각이라 contain 으로 맞춘다 (없으면 정사각형으로 찌그러짐) */
 .quiz-image img, .quiz-image svg { width: 100%; display: block; aspect-ratio: 1/1; object-fit: contain; }
 .name-slot {
-  height: 62px; border-radius: 999px; border: 3px dashed var(--pink);
+  height: 62px; border-radius: var(--radius-pill); border: 3px dashed var(--pink);
   display: grid; place-items: center; cursor: pointer; user-select: none;
   font-weight: 800; font-size: 22px; color: var(--pink); transition: .2s;
   background: var(--pink-soft);
 }
 .name-slot:hover { background: #ffc9dd; }
-.name-slot.revealed {
-  border-style: solid; background: linear-gradient(135deg, var(--pink), var(--purple));
-  color: #fff;
-}
-/* 이름이 공개된 뒤에는 눌러서 개별 페이지로 이동한다 */
-.name-slot.revealed:hover { filter: brightness(1.06); }
-/* .name-slot 이 display:grid 라 이름과 화살표를 한 요소로 묶어야 같은 줄에 놓인다 */
-.name-slot .ans { display: inline-flex; align-items: center; }
-.name-slot .go { font-size: 17px; margin-left: 9px; opacity: .85; }
 .name-slot .hint { font-size: 14px; font-weight: 700; opacity: .8; }
-.name-slot .en { font-size: 13px; font-weight: 700; opacity: .9; margin-left: 8px; }
-/* 정답 공개 시 함께 보여 주는 태그 */
-.reveal-info {
-  display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; margin-top: 14px;
-  animation: reveal-pop .22s ease-out;
+
+/* ===== 정답 행 =====
+   정답이 공개되는 순간 나오는 줄. 보통·어려움은 이름 칸이 이 행으로 바뀌고,
+   쉬움은 선택지 셋이 저마다 제자리에서 이 행으로 바뀐다.
+   짜임은 인기 차트의 한 줄(.rank-row)을 그대로 쓴다 — 그림·이름·태그칩.
+   순위 숫자가 없으므로 그 자리의 여백만 되돌리고, 집계 숫자가 있던 오른쪽 끝은
+   O/X 가 물려받는다.
+   행 전체가 개별 페이지로 가는 바로가기다 — 예전의 화살표(→)는 바로 아래
+   「다음 티니핑 →」 버튼과 같은 글자라 뜻이 갈리지 않아 없앴다. */
+/* 선택지(알약)에서 이 행으로 갈아 끼워지므로 모서리 지름과 가운데 정렬을 맞춘다 —
+   이름이 있던 자리에 이름이 그대로 있어야 바뀐 것이 눈에 덜 튄다. */
+/* .rank-row 와 붙여 쓴다. 클래스 하나짜리(.answer-row)로 적으면 특정도가 같아
+   뒤에 오는 .rank-row 가 이겨서 border-radius·margin 이 묻힌다. */
+.rank-row.answer-row {
+  /* 그림이 이름 왼쪽에 붙으므로 그대로 두면 이름이 그 폭만큼 오른쪽으로 밀린다.
+     그림과 글 묶음을 그 절반만큼 왼쪽으로 밀어 이름을 선택지와 같은 자리에 세운다.
+     자리 계산(flex)에는 끼지 않는 transform 을 쓴다 — 예전에는 오른쪽 끝 칸의
+     기준폭을 늘려 가운데를 옮겼는데, 비워 둔 그 폭만큼 글이 좁아져서
+     오른쪽에 여백이 남는데도 태그가 두 줄로 접혔다. */
+  --thumb-lead: 62px;          /* 그림 54 + 그림↔글 8 */
+  margin-bottom: 0; border-radius: var(--radius-pill);
+  justify-content: center; animation: reveal-pop .22s ease-out;
 }
-/* display 를 지정한 요소는 hidden 속성만으로 숨겨지지 않는다.
-   브라우저 기본 [hidden]{display:none} 보다 작성자 스타일이 우선하기 때문. */
-.reveal-info[hidden] { display: none; }
+/* 이름의 크기와 간격도 선택지와 같게 — 자리만 맞고 크기가 다르면 여전히 튄다 */
+.answer-row .rank-name { font-size: 22px; }
+.answer-row .rank-name-row { gap: 9px; }
+.answer-row .rank-thumb { margin-left: 0; }   /* 순위 숫자가 없으니 왼쪽 간격도 없다 */
+.answer-row .rank-body { flex: 0 1 auto; }    /* 늘리지 않아야 가운데로 모인다 */
+.answer-row .rank-text { align-items: center; }
+.answer-row .rank-tags { justify-content: center; }
+.answer-row .rank-thumb,
+.answer-row .rank-body { transform: translateX(calc(var(--thumb-lead) / -2)); }
+/* transform 을 준 요소는 겹쳐 깐 링크(.rank-hit)보다 아래에 그려져, 그 안의
+   읽어 주기 버튼이 링크에 덮여 눌리지 않게 된다. 글 묶음을 링크 위로 올리되
+   클릭은 통과시키고, 버튼만 클릭을 받는다. */
+.answer-row .rank-body { position: relative; z-index: 2; pointer-events: none; }
+.answer-row .speak-btn { pointer-events: auto; }
+/* 정답을 공개한 그 손가락이 곧바로 개별 페이지로 이어지지 않게 잠깐 잠가 둔다.
+   js/quiz.js 가 350ms 뒤에 armed 를 달아 준다. */
+.answer-row .rank-hit { pointer-events: none; }
+.answer-row.armed .rank-hit { pointer-events: auto; }
+/* O/X 는 차트에서 집계 숫자가 있던 오른쪽 끝 자리에 놓는다 —
+   그림·이름·태그를 훑고 마지막에 결과를 본다.
+   왼쪽에도 같은 칸을 하나 더 두고(빈 칸), 둘 다 남는 자리를 똑같이 나눠 갖게 한다.
+   그래야 가운데의 그림·이름이 정말 가운데에 서면서 O/X 는 끝까지 밀린다.
+   margin-left:auto 로 밀면 남은 것이 왼쪽으로 쏠리고, 여백을 숫자로 재서 맞추면
+   글자 크기가 달라지는 기기에서 어긋난다. */
+.answer-row .mark {
+  flex: 1 0 26px; text-align: right;
+  font-size: 27px; font-weight: 900; line-height: 1;
+}
+/* 맞고 틀림은 O/X 만으로도 보이지만, 세 줄이 나란할 때 한눈에 갈리도록
+   테두리와 바탕을 아주 옅게 물들인다 (차트 행의 짜임은 그대로 둔다). */
+.answer-row.correct { border-color: #9fe8d1; background: #f4fdfa; }
+.answer-row.correct .mark { color: #1f9c7c; }
+.answer-row.wrong { border-color: #ffbfbf; background: #fff7f7; }
+.answer-row.wrong .mark { color: #c02d68; }
 @keyframes reveal-pop { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: none; } }
 /* 난도 선택 화면 */
 .difficulty-screen { max-width: 460px; margin: 8px auto 0; display: grid; gap: 12px; }
@@ -348,22 +432,19 @@ a.rel-item:hover { transform: translateY(-2px); border-color: var(--pink); box-s
   /* O/X 표시와 글자를 같은 축에 세운다. 예전에는 vertical-align 로 픽셀을 맞췄는데
      글자 크기가 달라지는 모바일에서 어긋났다. */
   display: flex; align-items: center; justify-content: center; gap: 9px;
-  padding: 14px; border-radius: 999px; border: 2px solid var(--line); background: var(--card);
-  color: var(--ink); font-weight: 800; font-size: 17px; cursor: pointer; font-family: inherit; transition: .14s;
+  padding: 14px; border-radius: var(--radius-pill); border: 2px solid var(--line); background: var(--card);
+  /* 이름이 나오는 자리와 크기를 맞춘다 — 상세 27, 정답 행·인기 차트 21 인데
+     선택지만 17 이라 혼자 작아 보였다. */
+  color: var(--ink); font-weight: 800; font-size: 22px; cursor: pointer; font-family: inherit; transition: .14s;
 }
-.choice-btn:hover:not(:disabled) { border-color: var(--pink); transform: translateY(-2px); }
-.choice-btn:disabled { cursor: default; }
-.choice-btn.correct { background: linear-gradient(135deg, var(--mint), #57cfae); border-color: #57cfae; color: #fff; }
-.choice-btn.wrong { background: #ffd7d7; border-color: #ff9b9b; color: #c02d68; }
-/* 정답 O / 오답 X 표시 — 글자만 크게 (감싸는 원은 두지 않는다) */
-.choice-btn .mark {
-  flex: 0 0 auto; font-size: 24px; font-weight: 900; line-height: 1;
-}
-.choice-btn.correct .mark { color: #fff; }
-.choice-btn.go-detail { cursor: pointer; }
-.choice-btn.go-detail:hover { filter: brightness(1.06); }
-.choice-btn .go { font-size: 15px; opacity: .9; }
-.choice-btn.wrong .mark { color: #c02d68; }
+.choice-btn:hover { border-color: var(--pink); transform: translateY(-2px); }
+/* 선택지는 role="button" 인 <div> 다(버튼 안에 버튼을 넣을 수 없어서).
+   글자가 잡히면 두 번 눌렀을 때 이름이 선택되므로 선택은 막는다.
+   고르고 나면 셋 다 차트 항목(.answer-row)으로 갈아 끼워지므로,
+   '고른 뒤' 모양은 여기 없고 위 정답 행 쪽에 있다. */
+.choice-btn { user-select: none; }
+/* 선택지 안쪽 읽어 주기 버튼. 칸 높이(58px)가 늘지 않게 이름 한 줄만큼만 쓴다. */
+.choice-btn .speak-btn { --sz: 26px; }
 
 .quiz-btns { display: flex; gap: 10px; justify-content: center; margin-top: 20px; }
 .btn {
@@ -416,28 +497,44 @@ a.rel-item:hover { transform: translateY(-2px); border-color: var(--pink); box-s
 /* 간격은 요소마다 따로 준다. 행 전체에 gap 하나를 쓰면 순위↔그림만 좁힐 수 없어
    음수 마진 같은 편법이 필요해진다. 아래 margin-left 세 값이 각 사이의 간격이다. */
 .rank-row {
+  position: relative;                /* 아래 .rank-hit 가 이 칸을 덮는다 */
   display: flex; align-items: center; text-align: left;
   background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-sm);
   padding: 10px 16px; margin-bottom: 8px; box-shadow: var(--shadow); transition: .18s;
 }
 .rank-row:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
-/* 숫자와 변동을 나란히. 둘 다 자리를 고정해 두어야 행끼리 자릿수가 맞고,
-   변동 표시가 없는 기간에도 그림 위치가 그대로다.
-   칸 높이는 숫자가 정하므로(변동은 더 작다) 숫자가 그림과 수직 가운데로 맞는다. */
+/* 행 전체를 덮는 투명한 링크. 예전에는 행 자체가 <a> 였는데, 이름 옆 읽어 주기
+   버튼을 링크 안에 넣을 수 없어(누를 수 있는 것 안의 누를 수 있는 것) 링크를
+   위에 겹쳐 깐다. 버튼만 그보다 한 겹 더 위로 올려 클릭을 가져간다. */
+.rank-hit { position: absolute; inset: 0; z-index: 1; border-radius: inherit; }
+.rank-row .speak-btn { position: relative; z-index: 2; }
+/* 이름과 버튼을 한 줄에. 태그는 그 아래 그대로.
+   버튼을 이름 한 줄 높이(26px)에 맞춰 줄인다 — 기본 크기(30px)면 행이 그만큼 커진다. */
+.rank-name-row { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.rank-name-row .speak-btn { --sz: 26px; }
+/* 숫자 아래에 변동을 쌓는다. 숫자 위에도 변동과 같은 높이의 빈 칸(::before)을
+   두어, 아래에 무엇이 붙든 숫자가 그림과 수직 가운데에 그대로 서게 한다.
+   변동을 그냥 아래에 붙이면 두 칸을 합쳐 가운데를 잡느라 숫자가 위로 올라간다.
+
+   변동 칸은 비어 있어도 자리를 지킨다(js/rank.js 가 빈 <em> 을 내보낸다) —
+   비교할 기록이 없는 기간에도 숫자 자리가 흔들리지 않아야 한다.
+
+   세 높이를 더한 값(13 + 28 + 13)을 그림 높이(54)에 맞춰 두어 행이 높아지지 않는다. */
 .rank-no {
-  width: 60px; flex: 0 0 auto;
-  display: flex; align-items: center;
+  --delta-h: 13px;
+  width: 38px; flex: 0 0 auto;       /* "10"(29px)과 "신규"(24px)이 들어갈 만큼 */
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
 }
+.rank-no::before { content: ""; flex: 0 0 var(--delta-h); }
 .rank-no b {
-  width: 34px; text-align: center;   /* "10"(29px) 이 들어갈 만큼 */
   font-weight: 800; font-size: 28px; color: var(--pink);
-  font-variant-numeric: tabular-nums; line-height: 1.1;
+  font-variant-numeric: tabular-nums; line-height: 1;
 }
-/* 직전 기간 대비 오르내림 (오름=붉은색, 내림=푸른색). 숫자 오른쪽 고정 폭 자리에
-   놓는다 — 가장 넓은 "신규"(20px)와 "▲12"(24px) 이 들어갈 만큼. */
+/* 직전 기간 대비 오르내림 (오름=붉은색, 내림=푸른색) */
 .rank-delta {
+  flex: 0 0 var(--delta-h);
   font-style: normal; font-size: 11px; font-weight: 800; letter-spacing: -.02em;
-  width: 26px; text-align: center; line-height: 1.2;
+  text-align: center; line-height: var(--delta-h);
 }
 .rank-delta.up { color: #d0365e; }
 .rank-delta.down { color: #2b6f9c; }
@@ -596,7 +693,8 @@ a.rel-item:hover { transform: translateY(-2px); border-color: var(--pink); box-s
   .diff-card .t { font-size: 16px; }
   .diff-card .d { font-size: 12.5px; }
   .name-slot { height: 56px; font-size: 19px; }
-  .choice-btn { padding: 12px; font-size: 16px; }
+  .choice-btn { padding: 12px; font-size: 19px; }   /* 이름 칸과 같이 줄인다 */
+  .answer-row .rank-name { font-size: 19px; }      /* 선택지와 같은 크기로 */
 }
 
 /* 내비 항목이 셋(랜덤핑·이름 맞추기·인기 순위)이라 폰에서는 자리가 모자란다.
@@ -620,9 +718,9 @@ a.rel-item:hover { transform: translateY(-2px); border-color: var(--pink); box-s
   .rank-row { padding: 10px 12px; }
   .rank-thumb { width: 46px; height: 46px; }
   .rank-body { margin-left: 6px; }
-  .rank-no { width: 52px; }
-  .rank-no b { width: 28px; font-size: 24px; }
-  .rank-delta { width: 24px; }
+  .answer-row { --thumb-lead: 52px; }   /* 그림 46 + 그림↔글 6 */
+  .rank-no { width: 34px; --delta-h: 11px; }   /* 11 + 24 + 11 = 그림 높이(46) */
+  .rank-no b { font-size: 24px; }
   .rank-name { font-size: 18px; }
   .rank-nums { font-size: 12px; }
   .site-header .wrap { gap: 6px; }

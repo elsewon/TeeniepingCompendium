@@ -62,11 +62,11 @@ function rangeLabel(period, at) {
 }
 
 /* ── 그리기 ──────────────────────────────────── */
-/* 직전 기간 대비 오르내림. 비교할 기록이 없으면 delta 자체가 오지 않는다.
-   그래도 그림·이름 위치는 흔들리지 않는다 — 순위 칸(.rank-no)의 폭이
-   숫자와 변동 자리를 합쳐 고정되어 있다. */
+/* 직전 기간 대비 오르내림. 비교할 기록이 없으면 delta 자체가 오지 않는데,
+   그때도 빈 칸을 내보낸다 — 순위 숫자 아래 자리를 늘 같은 높이로 잡아 두어야
+   숫자가 그림과 수직 가운데에 그대로 선다 (css 의 .rank-no 참고). */
 function deltaHTML(row) {
-  if (!("delta" in row)) return "";
+  if (!("delta" in row)) return `<em class="rank-delta"></em>`;
   if (row.was == null) return `<em class="rank-delta new">신규</em>`;
   if (row.delta === 0) return `<em class="rank-delta same">–</em>`;
   return row.delta > 0
@@ -86,12 +86,18 @@ function rowHTML(row, i, sort) {
     .map(({ key, label }) =>
       `<span>${label} ${key === sort ? `<b>${n(row[key])}</b>` : n(row[key])}</span>`)
     .join("");
-  return `<a class="rank-row" href="${pingHref(t.id)}">
+  // 행 자체가 <a> 였을 때는 이름 옆에 읽어 주기 버튼을 둘 수 없었다
+  // (링크 안의 버튼). 지금은 행을 <div> 로 두고 투명한 링크를 위에 겹쳐 깐다.
+  return `<div class="rank-row">
+    <a class="rank-hit" href="${pingHref(t.id)}" aria-label="${t.nameKo} 자세히 보기"></a>
     <span class="rank-no"><b>${row.rank || i + 1}</b>${deltaHTML(row)}</span>
     <span class="rank-thumb">${imageMarkup(t, 120)}</span>
     <span class="rank-body">
       <span class="rank-text">
-        <span class="rank-name">${t.nameKo}</span>
+        <span class="rank-name-row">
+          <span class="rank-name">${t.nameKo}</span>
+          ${speakBtnHTML(t.nameKo)}
+        </span>
         <span class="rank-tags">
           <span class="tag season">${t.season}</span>
           <span class="tag ${gradeClass}">${t.grade}</span>
@@ -99,7 +105,7 @@ function rowHTML(row, i, sort) {
       </span>
       <span class="rank-nums">${nums}</span>
     </span>
-  </a>`;
+  </div>`;
 }
 
 function fill(box, rows, sort, what) {

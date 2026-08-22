@@ -10,7 +10,6 @@ const el = {
   stage: document.getElementById("stage"),
   image: document.getElementById("quizImage"),
   answer: document.getElementById("answerArea"),
-  reveal: document.getElementById("revealInfo"),
   next: document.getElementById("nextBtn"),
   score: document.getElementById("score"),
   modeLabel: document.getElementById("modeLabel"),
@@ -69,40 +68,52 @@ function nextQuestion() {
   el.image.innerHTML = imageMarkup(current, 380);
   el.image.classList.toggle("silhouette", MODES[mode].silhouette);
 
-  // 정답 영역
-  hideTags();
+  // 정답 영역 — 두 그리기 함수가 #answerArea 를 통째로 다시 쓴다
   MODES[mode].choices ? renderChoices() : renderNameSlot();
   updateScore();
 }
 
-/* 정답이 공개되는 순간 기수·등급·성별·감정 태그를 함께 보여 준다.
-   목록 카드와 똑같은 .tag 마크업을 써서 모양을 맞춘다. */
-function showTags() {
-  const t = current;
+/* 정답이 공개되는 순간 나오는 '정답 행'.
+ *
+ * 인기 차트의 한 줄(.rank-row)과 같은 짜임을 그대로 쓴다 — 그림·이름·태그칩.
+ * 같은 것을 두 곳에서 다르게 보여 줄 이유가 없고, 아이는 차트에서 이미 이 모양에
+ * 익숙하다. 순위 숫자와 집계 숫자만 빠진다.
+ *
+ * 행 전체가 개별 페이지로 가는 바로가기다. 예전에는 이름 옆 화살표(→)가 그 표시였는데,
+ * 바로 아래 「다음 티니핑 →」 버튼과 같은 글자라 뜻이 갈리지 않았다. 이제 화살표를
+ * 없애고 누를 수 있는 면을 행 전체로 넓혔다 — 작은 손에게는 면적이 곧 쓰기 쉬움이다. */
+/* mark 는 "correct"(O) · "wrong"(X) · 없음. 차트에서 집계 숫자가 있던
+   오른쪽 끝 자리에 놓는다 — 그림·이름·태그를 훑고 마지막에 결과를 본다.
+   왼쪽의 빈 .mark 는 균형추다. 내용이 가운데 오려면 오른쪽 O/X 와 같은 폭이
+   왼쪽에도 있어야 한다 (css 의 .answer-row .mark 참고). */
+function answerRowHTML(t, mark) {
   const gradeClass = ["로열", "레전드", "빌런"].includes(t.grade) ? "grade-" + t.grade : "";
-  el.reveal.innerHTML = `
-    <span class="tag season">${t.season}</span>
-    <span class="tag ${gradeClass}">${t.grade}</span>
-    ${t.gender ? `<span class="tag gender-${t.gender}">${t.gender}</span>` : ""}
-    ${t.emotion ? `<span class="tag">${t.emotion}</span>` : ""}`;
-  el.reveal.hidden = false;
+  const sign = mark === "correct" ? "O" : mark === "wrong" ? "X" : "";
+  return `<div class="rank-row answer-row${mark ? " " + mark : ""}">
+    <a class="rank-hit" href="${pingHref(t.id)}" aria-label="${t.nameKo} 자세히 보기"></a>
+    <span class="mark" aria-hidden="true"></span>
+    <span class="rank-thumb">${imageMarkup(t, 120)}</span>
+    <span class="rank-body"><span class="rank-text">
+      <span class="rank-name-row">
+        <span class="rank-name">${t.nameKo}</span>${speakBtnHTML(t.nameKo)}
+      </span>
+      <span class="rank-tags">
+        <span class="tag season">${t.season}</span>
+        <span class="tag ${gradeClass}">${t.grade}</span>
+        ${t.gender ? `<span class="tag gender-${t.gender}">${t.gender}</span>` : ""}
+        ${t.emotion ? `<span class="tag">${t.emotion}</span>` : ""}
+      </span>
+    </span></span><span class="mark">${sign}</span>
+  </div>`;
 }
 
-function hideTags() {
-  el.reveal.hidden = true;
-  el.reveal.innerHTML = "";
-}
-
-function gotoDetail() {
-  location.href = pingHref(current.id);
-}
-
-/* 정답을 공개한 '그 클릭'이 곧바로 페이지 이동으로 이어지지 않게 잠깐 잠가 둔다.
-   아이가 빠르게 두 번 누르면 원치 않게 넘어가 버리기 때문. */
-function armLater(ms) {
-  const gate = { ok: false };
-  setTimeout(() => { gate.ok = true; }, ms || 350);
-  return gate;
+/* 정답을 공개한 '그 손가락'이 곧바로 개별 페이지로 이어지지 않게 잠깐 잠가 둔다.
+   아이가 빠르게 두 번 누르면 원치 않게 넘어가 버리기 때문.
+   링크를 늦게 살리는 일은 css 가 맡는다 (.answer-row.armed). */
+function armRows(box) {
+  setTimeout(() => {
+    box.querySelectorAll(".answer-row").forEach((r) => r.classList.add("armed"));
+  }, 350);
 }
 
 function updateScore() {
@@ -120,16 +131,12 @@ function renderNameSlot() {
       <span class="hint">👆 눌러서 이름 보기</span>
     </div>`;
   const slot = document.getElementById("nameSlot");
-  let gate = null;
   const act = () => {
-    // 이름이 이미 공개돼 있으면 두 번째 누름은 개별 페이지로 이동
-    if (slot.classList.contains("revealed")) { if (gate.ok) gotoDetail(); return; }
-    gate = armLater();
-    slot.classList.add("revealed");
-    slot.innerHTML = `<span class="ans">${current.nameKo}<span class="go">→</span></span>`;
-    slot.title = current.nameKo + " 개별 페이지로 이동";
+    // 이름 칸을 정답 행으로 갈아 끼운다 — 이름·그림·태그를 한꺼번에 보여 주고,
+    // 그 자리가 그대로 개별 페이지로 가는 바로가기가 된다.
+    el.answer.innerHTML = answerRowHTML(current);
+    armRows(el.answer);
     el.image.classList.remove("silhouette"); // 어려움: 실제 이미지 공개
-    showTags();
   };
   slot.addEventListener("click", act);
   slot.addEventListener("keydown", (e) => {
@@ -138,42 +145,49 @@ function renderNameSlot() {
 }
 
 /* --- 쉬움: 3지선다 --- */
+/* 선택지는 <button> 이 아니라 role="button" 인 <div> 다 — 버튼 안에 버튼을 넣으면
+ * 파서가 안쪽 버튼을 바깥으로 밀어내 마크업이 깨진다. 이름 칸(.name-slot)이
+ * 원래 쓰던 방식과 같다.
+ *
+ * 읽어 주기 버튼은 세 선택지 모두에 처음부터 붙는다. 글을 못 읽는 아이에게는
+ * 선택지를 들어 보는 것이 곧 문제를 읽는 것이라, 답을 알려 주는 것이 아니다.
+ *
+ * 고르고 나면 이 칸들은 사라진다 — 셋 다 정답 행으로 갈아 끼워지므로
+ * '고른 뒤' 모양은 여기가 아니라 answerRowHTML 에 있다. */
 function renderChoices() {
   const others = shuffle(quizPool().filter((t) => t.id !== current.id)).slice(0, 2);
   const options = shuffle([current, ...others]);
   el.answer.innerHTML = `<div class="choices">${
-    options.map((o) => `<button class="choice-btn" data-id="${o.id}">${o.nameKo}</button>`).join("")
+    options.map((o) =>
+      `<div class="choice-btn" role="button" tabindex="0" data-id="${o.id}">` +
+      `<span class="choice-name">${o.nameKo}</span>${speakBtnHTML(o.nameKo)}</div>`).join("")
   }</div>`;
 
   const btns = [...el.answer.querySelectorAll(".choice-btn")];
-  let settled = false, gate = null;
+  let settled = false;
+
+  const pick = (btn, e) => {
+    if (e && e.target.closest("[data-speak]")) return;   // 안쪽 읽어 주기 버튼
+    if (settled) return;
+    settled = true;
+    const chosenId = btn.dataset.id;
+    // 선택지 셋을 제자리에서 차트 항목으로 갈아 끼운다. 고른 것 하나만이 아니라
+    // 셋 다 바꾸는 이유: 나머지 둘도 결국 티니핑이고, 아이는 방금 들어 본 이름의
+    // 얼굴을 궁금해한다. 세 줄 모두 그 티니핑 페이지로 가는 바로가기가 된다.
+    // 고르지 않은 오답에는 표시를 하지 않는다 — 틀린 것은 내가 고른 하나뿐이다.
+    el.answer.innerHTML = `<div class="choices">${
+      options.map((o) => answerRowHTML(
+        o, o.id === current.id ? "correct" : o.id === chosenId ? "wrong" : null)).join("")
+    }</div>`;
+    armRows(el.answer);
+    updateScore();
+  };
+
   btns.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      if (settled) {
-        if (gate.ok && btn.classList.contains("go-detail")) gotoDetail();
-        return;
-      }
-      settled = true;
-      gate = armLater();
-      const chosenId = btn.dataset.id;
-      btns.forEach((b) => {
-        if (b.dataset.id === current.id) {
-          b.classList.add("correct");
-          b.insertAdjacentHTML("afterbegin", '<span class="mark">O</span>');
-          // 정답 버튼은 살려 두고 개별 페이지로 가는 버튼으로 바꾼다
-          b.insertAdjacentHTML("beforeend", '<span class="go">→</span>');
-          b.classList.add("go-detail");
-          b.title = current.nameKo + " 개별 페이지로 이동";
-        } else {
-          b.disabled = true;
-          if (b.dataset.id === chosenId) {
-            b.classList.add("wrong");
-            b.insertAdjacentHTML("afterbegin", '<span class="mark">X</span>');
-          }
-        }
-      });
-      showTags();
-      updateScore();
+    btn.addEventListener("click", (e) => pick(btn, e));
+    btn.addEventListener("keydown", (e) => {
+      if (e.target.closest("[data-speak]")) return;   // 위와 같은 이유
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(btn, e); }
     });
   });
 }
