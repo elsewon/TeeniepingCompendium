@@ -227,13 +227,13 @@ document.addEventListener("click", (e) => {
 /* 아이콘은 이모지가 아니라 인라인 SVG 다. 헤더 공유 버튼과 같은 방식 —
    currentColor 를 따라가므로 분홍 테마에 맞고, 기기에 그 이모지가 있는지
    따질 일도 없다 (🗣️ 는 글꼴에 따라 두부로 나오고, 작게 줄이면 어두운
-   덩어리로 뭉개진다). 물결 두 줄은 읽는 동안 차례로 밝아진다 — css 의 speak-wave. */
+   덩어리로 뭉개진다). 읽는 동안에는 테두리가 번진다 — css 의 audio-pulse. */
 const SPEAK_ICON =
   '<svg class="speak-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor"' +
   ' stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
   '<path d="M11.8 5 7.3 9H4.3v6h3L11.8 19z" fill="currentColor"/>' +
-  '<path class="w1" d="M15.3 9.2a4 4 0 0 1 0 5.6"/>' +
-  '<path class="w2" d="M18 6.6a8 8 0 0 1 0 10.8"/></svg>';
+  '<path d="M15.3 9.2a4 4 0 0 1 0 5.6"/>' +
+  '<path d="M18 6.6a8 8 0 0 1 0 10.8"/></svg>';
 
 /* 버튼 마크업. 이름은 속성에 들어가므로 꺾쇠·따옴표만 막아 준다. */
 function speakBtnHTML(name, cls) {
