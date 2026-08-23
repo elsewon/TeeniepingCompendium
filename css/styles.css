@@ -426,14 +426,12 @@ a.rel-item:hover { transform: translateY(-2px); border-color: var(--pink); box-s
    js/quiz.js 가 350ms 뒤에 armed 를 달아 준다. */
 .answer-row .rank-hit { pointer-events: none; }
 .answer-row.armed .rank-hit { pointer-events: auto; }
-/* O/X 는 차트에서 집계 숫자가 있던 오른쪽 끝 자리에 놓는다 —
-   그림·이름·태그를 훑고 마지막에 결과를 본다.
-   왼쪽에도 같은 칸을 하나 더 두고(빈 칸), 둘 다 남는 자리를 똑같이 나눠 갖게 한다.
-   그래야 가운데의 그림·이름이 정말 가운데에 서면서 O/X 는 끝까지 밀린다.
-   margin-left:auto 로 밀면 남은 것이 왼쪽으로 쏠리고, 여백을 숫자로 재서 맞추면
-   글자 크기가 달라지는 기기에서 어긋난다. */
+/* O/X 는 오른쪽 끝에 겹쳐 그린다. 자리를 차지하지 않으므로 그림·이름·태그가 행의
+   폭을 다 쓴다 — 예전에는 좌우에 26px 씩 비워 두느라(가운데 정렬을 맞추려고)
+   태그가 들어갈 폭이 52px 줄었고, 폰에서는 157마리 중 71마리가 두 줄로 접혔다.
+   글이 길어 O/X 자리까지 닿으면 그 위에 겹쳐 그려진다 — 접히는 것보다 낫다. */
 .answer-row .mark {
-  flex: 1 0 26px; text-align: right;
+  position: absolute; right: 16px; top: 50%; transform: translateY(-50%);
   font-size: 27px; font-weight: 900; line-height: 1;
 }
 /* 맞고 틀림은 O/X 만으로도 보이지만, 세 줄이 나란할 때 한눈에 갈리도록
@@ -766,6 +764,7 @@ a.rel-item:hover { transform: translateY(-2px); border-color: var(--pink); box-s
   .rank-thumb { width: 46px; height: 46px; }
   .rank-body { margin-left: 6px; }
   .answer-row { --thumb-lead: 52px; }   /* 그림 46 + 그림↔글 6 */
+  .answer-row .mark { right: 12px; }   /* 행 여백에 맞춘다 */
   .rank-no { width: 34px; --delta-h: 11px; }   /* 11 + 24 + 11 = 그림 높이(46) */
   .rank-no b { font-size: 24px; }
   .rank-name { font-size: 18px; }

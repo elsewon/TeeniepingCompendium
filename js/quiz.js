@@ -83,25 +83,24 @@ function nextQuestion() {
  * 바로 아래 「다음 티니핑 →」 버튼과 같은 글자라 뜻이 갈리지 않았다. 이제 화살표를
  * 없애고 누를 수 있는 면을 행 전체로 넓혔다 — 작은 손에게는 면적이 곧 쓰기 쉬움이다. */
 /* mark 는 "correct"(O) · "wrong"(X) · 없음. 차트에서 집계 숫자가 있던
-   오른쪽 끝 자리에 놓는다 — 그림·이름·태그를 훑고 마지막에 결과를 본다.
-   왼쪽의 빈 .mark 는 균형추다. 내용이 가운데 오려면 오른쪽 O/X 와 같은 폭이
-   왼쪽에도 있어야 한다 (css 의 .answer-row .mark 참고). */
+   오른쪽 끝에 겹쳐 그린다 — 자리를 차지하지 않으므로 그림·이름·태그가 행의 폭을
+   다 쓴다 (css 의 .answer-row .mark 참고). */
 function answerRowHTML(t, mark) {
   const gradeClass = ["로열", "레전드", "빌런"].includes(t.grade) ? "grade-" + t.grade : "";
   const sign = mark === "correct" ? "O" : mark === "wrong" ? "X" : "";
   return `<div class="rank-row answer-row${mark ? " " + mark : ""}">
     <a class="rank-hit" href="${pingHref(t.id)}" aria-label="${t.nameKo} 자세히 보기"></a>
-    <span class="mark" aria-hidden="true"></span>
     <span class="rank-thumb">${imageMarkup(t, 120)}</span>
     <span class="rank-body"><span class="rank-text">
       <span class="rank-name-row">
         <span class="rank-name">${t.nameKo}</span>${speakBtnHTML(t.nameKo)}
       </span>
+      <!-- 목록 카드와 같은 셋: 기수·등급·성별. 감정은 넣지 않는다 —
+           "열쇠 티니핑" 처럼 긴 것이 있어 폰에서 태그가 두 줄로 접혔다. -->
       <span class="rank-tags">
         <span class="tag season">${t.season}</span>
         <span class="tag ${gradeClass}">${t.grade}</span>
         ${t.gender ? `<span class="tag gender-${t.gender}">${t.gender}</span>` : ""}
-        ${t.emotion ? `<span class="tag">${t.emotion}</span>` : ""}
       </span>
     </span></span><span class="mark">${sign}</span>
   </div>`;
