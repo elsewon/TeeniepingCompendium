@@ -73,23 +73,30 @@ function alreadyVisited() {
 }
 
 /* ===== 방문 경로 =====
-   어디를 거쳐 들어왔는지 한 세션에 한 번만 센다. 주소(호스트)를 그대로 보낸다.
-   공유 버튼을 거친 링크는 주소가 없어 _share 로 대신한다.
+   어디를 거쳐 들어왔는지 한 세션에 한 번만 센다.
 
-   리퍼러가 없으면(앱·북마크·주소 입력·메신저 상당수) 아예 세지 않는다 — null 을
-   돌려준다. 어디서 왔는지 알려 주는 것이 없어 목록에 쓸 데가 없는데, 카카오톡
-   같은 인앱 브라우저가 리퍼러를 안 보내 수만 가장 크게 쌓였다.
-   사이트 안에서 넘어온 것도 방문 경로가 아니므로 같이 뺀다. */
+   리퍼러가 있으면 그 주소(호스트)를 쓴다. 공유 버튼이 붙인 ?s=1 표식이 함께 있어도
+   주소 쪽을 택한다 — "공유로 들어왔다" 보다 "어디에 올린 링크였나" 가 더 알 만하고,
+   공유였다는 것은 표식 없이도 그 주소를 보면 대개 짐작이 된다.
+
+   그래서 _share 는 "공유 버튼을 거쳤는데 어디서 왔는지 알 길이 없는 경우" 가 된다.
+   카카오톡 같은 인앱 브라우저가 리퍼러를 안 보내므로 메신저 유입이 여기 모인다.
+
+   사이트 안에서 넘어온 것은 표식이 붙어 있어도 세지 않는다 — 밖에서 들어온 것만
+   방문 경로다. 공유 링크를 우리 페이지 안에서 눌러 봐야 새 방문자가 온 것이 아니다.
+
+   리퍼러도 표식도 없으면(앱·북마크·주소 입력) 역시 세지 않는다 — 어디서 왔는지
+   알려 주는 것이 없어 목록에 쓸 데가 없다. */
 function referralHost() {
-  if (new URLSearchParams(location.search).get("s") === "1") return "_share";
   const r = document.referrer;
-  if (!r) return null;
-  try {
-    const host = new URL(r).host.toLowerCase().replace(/^www\./, "");
-    return host === location.host.toLowerCase().replace(/^www\./, "") ? null : host;
-  } catch {
-    return null;
+  if (r) {
+    try {
+      const host = new URL(r).host.toLowerCase().replace(/^www\./, "");
+      const self = location.host.toLowerCase().replace(/^www\./, "");
+      return host === self ? null : host;      // 안에서 온 것이면 여기서 끝
+    } catch { /* 주소가 망가졌으면 아래 표식으로 넘어간다 */ }
   }
+  return new URLSearchParams(location.search).get("s") === "1" ? "_share" : null;
 }
 
 /* 표식을 주소에 남겨 두면 받은 사람이 그 주소를 다시 공유하거나 북마크할 때
