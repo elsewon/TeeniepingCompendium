@@ -17,11 +17,13 @@ const el = {
   share: document.getElementById("shareList"),
 };
 
-/* 줄 세우는 기준 세 가지. 화면에 나오는 차례이기도 하다. */
+/* 줄 세우는 기준 세 가지. 화면에 나오는 차례이자 행 안의 숫자 차례이기도 하다.
+   들인 수고가 적은 것부터 — 조회는 열기만 해도 오르고, 공유는 링크를 보내야 하고,
+   좋아요는 기기당 한 번뿐이라 가장 진심에 가깝다 (worker/counter.js 의 SCORE 와 같은 차례). */
 const SORTS = [
-  { key: "like", label: "좋아요" },
   { key: "visit", label: "조회" },
   { key: "share", label: "공유" },
+  { key: "like", label: "좋아요" },
 ];
 
 const state = { period: "day", at: null, now: null };
@@ -79,7 +81,7 @@ function rowHTML(row, i, sort) {
   if (!t) return "";
   const n = (v) => Number(v || 0).toLocaleString("ko-KR");
   const gradeClass = ["로열", "레전드", "빌런"].includes(t.grade) ? "grade-" + t.grade : "";
-  // 세 값을 다 보여 준다. 차례는 세 목록에서 늘 같게(좋아요·조회·공유) 두고,
+  // 세 값을 다 보여 준다. 차례는 세 목록에서 늘 같게(조회·공유·좋아요) 두고,
   // 그 목록이 줄 세우는 기준만 굵게 표시한다 — 목록을 옮겨 다녀도 같은 값이
   // 늘 같은 줄에 있어야 눈이 자리를 다시 찾지 않는다.
   const nums = SORTS

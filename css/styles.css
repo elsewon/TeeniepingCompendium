@@ -593,7 +593,7 @@ a.rel-item:hover { transform: translateY(-2px); border-color: var(--pink); box-s
 .rank-name { font-weight: 800; font-size: 21px; line-height: 1.25; }
 .rank-tags { display: flex; flex-wrap: wrap; gap: 4px; }
 .rank-tags .tag { flex: 0 0 auto; white-space: nowrap; padding: 3px 7px; }
-/* 세 줄(좋아요·조회·공유)이 그림 높이(54px) 안에 들어가도록 줄 간격을 좁힌다.
+/* 세 줄(조회·공유·좋아요)이 그림 높이(54px) 안에 들어가도록 줄 간격을 좁힌다.
    본문 기본값 1.55 를 그대로 두면 67px 이 되어 행이 그만큼 커진다. */
 .rank-nums {
   margin-left: auto; white-space: nowrap;
