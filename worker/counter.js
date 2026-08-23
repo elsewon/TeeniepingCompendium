@@ -368,8 +368,79 @@ function cors(origin, env) {
   };
 }
 
+/* ===== 읽기는 엣지에 캐시한다 =====
+ *
+ * 재 보니 세는 일(Durable Object 안)은 늘 0~1ms 로 끝나는데, 그 DO 에 "닿는" 데만
+ * 0.2초에서 10초까지 걸렸다 (요청 셋 중 하나꼴로 1초 넘음). 이 사이트는 방문이
+ * 하루 십수 번뿐이라 DO 가 거의 늘 잠들어 있고, 깨우는 값을 방문자가 그대로 문다.
+ *
+ * 그래서 읽기 응답을 엣지에 두고, 만료돼도 일단 그것을 내준 뒤 뒤에서 새로 받아
+ * 채워 넣는다(stale-while-revalidate). 짧은 캐시만으로는 소용이 없다 — 방문 사이가
+ * 평균 한 시간이 넘어 다음 사람이 올 때는 이미 비어 있기 때문이다. 묵은 것이라도
+ * 즉시 내주어야 아무도 DO 를 깨우느라 기다리지 않는다.
+ *
+ * 세는 일(POST /hit)은 캐시하지 않는다. 그래서 세션 첫 페이지는 늘 최신을 본다 —
+ * 뒤처지는 것은 "그 사이 남이 올린 숫자" 뿐이다. */
+const READ_PATHS = ["/stats", "/rank", "/series", "/refs"];
+const FRESH_MS = 60 * 1000;              // 이 안이면 그대로 내준다
+const STALE_MS = 24 * 60 * 60 * 1000;    // 이보다 묵으면 새로 받아 온다
+
+/** 카운터는 하나뿐이므로 항상 같은 이름의 객체를 쓴다 */
+function askCounter(url, env) {
+  const stub = env.COUNTER.get(env.COUNTER.idFromName("teenieping"));
+  return stub.fetch(new Request(url.toString(), { method: "GET" }));
+}
+
+/** 캐시에 둘 사본. 만든 시각을 함께 적어 두고 그것으로 신선도를 잰다 —
+    Cache-Control 만으로는 "묵어도 일단 내주기" 를 다룰 수 없다. */
+async function freshCopy(url, env, cache, key) {
+  const res = await askCounter(new URL(key.url), env);
+  const body = await res.text();
+  const copy = new Response(body, {
+    status: res.status,
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": `max-age=${STALE_MS / 1000}`,
+      "x-made-at": String(Date.now()),
+    },
+  });
+  if (res.ok) await cache.put(key, copy.clone());
+  return copy;
+}
+
+async function readCached(url, env, ctx, headers) {
+  const cache = caches.default;
+
+  /* 통계 페이지는 숫자를 확인하러 들어가는 곳이라 묵은 값을 주면 안 된다.
+     fresh=1 이면 캐시를 읽지 않고 새로 받아 온다 (받아 온 것은 캐시에 넣어 둔다 —
+     그 덕에 다른 방문자는 빨라진다).
+     열쇠에서는 fresh 를 뺀다. 그러지 않으면 fresh=1 요청이 딴 칸에 쌓여
+     보통 요청과 서로 남의 것을 못 본다. */
+  const fresh = url.searchParams.get("fresh") === "1";
+  const keyUrl = new URL(url.toString());
+  keyUrl.searchParams.delete("fresh");
+  const key = new Request(keyUrl.toString(), { method: "GET" });
+  /* x-cache 는 진단용이다 — 느린 응답이 정말 캐시를 못 맞힌 것인지 보려면
+     밖에서 알아볼 길이 있어야 한다 (HIT 신선 · STALE 묵었지만 즉시 내줌 · MISS 새로 받음) */
+  const send = (res, mark) => new Response(res.body, {
+    status: res.status,
+    headers: { ...headers, "Content-Type": "application/json", "x-cache": mark },
+  });
+
+  const hit = fresh ? null : await cache.match(key);
+  if (hit) {
+    const age = Date.now() - Number(hit.headers.get("x-made-at") || 0);
+    if (age < STALE_MS) {
+      // 묵었으면 내주고 나서 뒤에서 갱신한다 (기다리게 하지 않는다)
+      if (age > FRESH_MS) ctx.waitUntil(freshCopy(url, env, cache, key));
+      return send(hit, age > FRESH_MS ? "STALE" : "HIT");
+    }
+  }
+  return send(await freshCopy(url, env, cache, key), "MISS");
+}
+
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const origin = request.headers.get("Origin") || "";
     const headers = cors(origin, env);
@@ -390,9 +461,11 @@ export default {
       }
     }
 
-    // 카운터는 하나뿐이므로 항상 같은 이름의 객체를 쓴다
-    const stub = env.COUNTER.get(env.COUNTER.idFromName("teenieping"));
-    const res = await stub.fetch(new Request(url.toString(), { method: "GET" }));
+    if (READ_PATHS.includes(url.pathname)) {
+      return readCached(url, env, ctx, headers);
+    }
+
+    const res = await askCounter(url, env);
     return new Response(res.body, {
       status: res.status,
       headers: { ...headers, "Content-Type": "application/json" },

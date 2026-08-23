@@ -11,6 +11,11 @@
  * 통계 페이지(stats.html) 자체는 세지 않으므로 여기에도 나오지 않는다.
  */
 const CHART_API = "https://teenieping-counter.elsewon.workers.dev";
+
+/* 읽기 요청에 fresh=1 을 붙인다. 통계 서버는 읽기 응답을 엣지에 캐시해 두고 만료돼도
+   일단 그것을 내주는데(빠르지만 묵은 값), 이 페이지는 숫자를 확인하러 들어오는 곳이라
+   그러면 새로고침을 두 번 누르게 된다. 여기서만 캐시를 건너뛴다 —
+   꼬리말 숫자나 인기 차트는 그대로 캐시를 쓴다. */
 let days = 7;
 
 /* 색은 dataviz 팔레트의 1~3번 슬롯. 세 색은 모든 짝에서 검사를 통과한다. */
@@ -198,8 +203,8 @@ async function loadInflow() {
   el.inflow.innerHTML = `<li class="empty">불러오는 중…</li>`;
   let rows = null;
   try {
-    const res = await fetch(`${CHART_API}/refs?days=${refDays}&limit=20`,
-                            { mode: "cors", cache: "no-store" });
+    const res = await fetch(`${CHART_API}/refs?days=${refDays}&limit=20&fresh=1`,
+      { mode: "cors", cache: "no-store", signal: timeoutSignal(STATS_TIMEOUT) });
     if (res.ok) rows = (await res.json()).rows;
   } catch { /* 아래에서 안내 */ }
 
@@ -242,7 +247,8 @@ function drawTiles(stats) {
 
 async function loadTiles() {
   try {
-    const res = await fetch(`${CHART_API}/stats`, { mode: "cors", cache: "no-store" });
+    const res = await fetch(`${CHART_API}/stats?fresh=1`,
+      { mode: "cors", cache: "no-store", signal: timeoutSignal(STATS_TIMEOUT) });
     if (res.ok) drawTiles(await res.json());
   } catch { /* 숫자가 없으면 그냥 비워 둔다 */ }
 }
@@ -286,7 +292,8 @@ el.csvDownload.addEventListener("click", () => {
 async function load() {
   el.plot.innerHTML = `<div class="empty">불러오는 중…</div>`;
   try {
-    const res = await fetch(`${CHART_API}/series?days=${days}`, { mode: "cors", cache: "no-store" });
+    const res = await fetch(`${CHART_API}/series?days=${days}&fresh=1`,
+      { mode: "cors", cache: "no-store", signal: timeoutSignal(STATS_TIMEOUT) });
     data = res.ok ? await res.json() : null;
   } catch { data = null; }
   if (!data) {

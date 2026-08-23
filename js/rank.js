@@ -140,7 +140,7 @@ async function load() {
   const at = state.at ? `&at=${encodeURIComponent(state.at)}` : "";
   try {
     const res = await fetch(`${RANK_API}/rank?period=${state.period}${at}&limit=10`,
-                            { mode: "cors", cache: "no-store" });
+      { mode: "cors", cache: "no-store", signal: timeoutSignal(STATS_TIMEOUT) });
     render(res.ok ? await res.json() : null);
   } catch {
     render(null);

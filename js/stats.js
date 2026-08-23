@@ -51,7 +51,8 @@ function publish(s) {
 async function callStats(path, options) {
   if (!STATS_API) return null;
   try {
-    const res = await fetch(STATS_API + path, { ...options, mode: "cors", cache: "no-store" });
+    const res = await fetch(STATS_API + path,
+      { ...options, mode: "cors", cache: "no-store", signal: timeoutSignal(STATS_TIMEOUT) });
     return res.ok ? await res.json() : null;
   } catch {
     return null;   // 통계는 부가 기능이라 실패해도 사이트는 그대로 동작한다

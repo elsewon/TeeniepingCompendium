@@ -216,6 +216,23 @@ document.addEventListener("click", (e) => {
   sharePage(btn);
 });
 
+/* ===== 통계 요청 시간 제한 =====
+   통계 서버(Cloudflare Worker)가 이따금 몇 초씩 늦게 답한다. 시간 제한이 없으면
+   그동안 "불러오는 중…" 인 채로 매달려 고장 난 것처럼 보인다. 5초면 물러난다 —
+   통계는 부가 기능이라 못 받아도 사이트는 그대로 동작한다.
+
+   AbortSignal.timeout 은 좀 지난 브라우저에 없다. 없으면 직접 만들어 쓴다. */
+function timeoutSignal(ms) {
+  if (typeof AbortSignal !== "undefined" && AbortSignal.timeout) {
+    return AbortSignal.timeout(ms);
+  }
+  const c = new AbortController();
+  setTimeout(() => c.abort(), ms);
+  return c.signal;
+}
+
+const STATS_TIMEOUT = 5000;
+
 /* ===== 이름 읽어 주기 =====
    이름 옆 동그란 버튼. 한글을 아직 못 읽는 아이도 이름을 확인할 수 있게
    브라우저 음성 합성(Web Speech)으로 이름만 짧게 읽어 준다.
