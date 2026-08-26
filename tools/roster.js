@@ -5,7 +5,7 @@
  */
 window.ROSTER = [
   {
-    seasonKey: "emotion", season: "1기-감정", color: "#FF6FA4",
+    seasonKey: "emotion", season: "1기 감정", color: "#FF6FA4",
     royal:   ["하츄핑", "바로핑", "아자핑", "차차핑", "라라핑", "해핑"],
     legend:  [],
     villain: ["악동핑", "앙대핑"],
@@ -19,7 +19,7 @@ window.ROSTER = [
     ]
   },
   {
-    seasonKey: "jewel", season: "2기-반짝반짝", color: "#5B8DEF",
+    seasonKey: "jewel", season: "2기 보석", color: "#5B8DEF",
     royal:   ["다이아 하츄핑", "조아핑", "방글핑", "믿어핑"],
     legend:  [],
     villain: ["가면핑"],
@@ -30,7 +30,7 @@ window.ROSTER = [
     ]
   },
   {
-    seasonKey: "key", season: "3기-알쏭달쏭", color: "#B57EDC",
+    seasonKey: "key", season: "3기 열쇠", color: "#B57EDC",
     royal:   ["플로라 하츄핑", "꾸래핑", "나나핑", "솔찌핑"],
     legend:  ["행운핑"],
     villain: ["다해핑"],
@@ -41,7 +41,7 @@ window.ROSTER = [
     ]
   },
   {
-    seasonKey: "dessert", season: "4기-새콤달콤", color: "#FF8FC7",
+    seasonKey: "dessert", season: "4기 디저트", color: "#FF8FC7",
     royal:   ["베리 하츄핑", "샤샤핑", "포실핑", "말랑핑"],
     legend:  ["새콤핑", "달콤핑"],
     villain: [],
@@ -52,7 +52,7 @@ window.ROSTER = [
     ]
   },
   {
-    seasonKey: "star", season: "5기-슈팅스타", color: "#57D6A8",
+    seasonKey: "star", season: "5기 별", color: "#57D6A8",
     royal:   ["스타 하츄핑", "빤짝핑", "빛나핑", "초롱핑"],
     legend:  ["오로라핑"],
     villain: [],
@@ -64,7 +64,7 @@ window.ROSTER = [
     ]
   },
   {
-    seasonKey: "princess", season: "6기-프린세스", color: "#E96FD8",
+    seasonKey: "princess", season: "6기 프린세스", color: "#E96FD8",
     royal:   ["프린세스 하츄핑", "사뿐핑", "아름핑", "뽀니핑"],
     legend:  ["다이아나핑", "이클립스핑"],
     villain: [],

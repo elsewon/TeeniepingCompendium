@@ -15,6 +15,14 @@
   그래서 모서리에서 번져 나가되 **이웃과의 색차가 GRADIENT 를 넘으면 멈춘다.**
   글로우 안에서는 계속 번지고, 캐릭터 경계에서는 넘어가지 못한다.
 
+또 한 가지 함정 — 흰 몸통.
+  소라핑은 배와 팔이 거의 흰색이라 '채도가 낮으면 배경' 규칙에 그대로 걸린다.
+  게다가 배 둘레는 부드러운 그림자라 경사 규칙에도 걸리지 않아, 한 번 새어 들면
+  배가 통째로 지워졌다.
+  가르는 단서는 **색온도**다. 배경은 하늘색 글로우가 옅어진 것이라 차갑고(B ≥ R),
+  몸통 흰색은 분홍이 섞여 따뜻하다(소라핑 배는 R 이 B 보다 3~19 높다).
+  그래서 거의 흰 픽셀은 차가울 때만 배경으로 본다.
+
 사용법: python3 tools/strip-heart-bg.py [--apply]
 """
 import sys, os, colorsys
@@ -33,8 +41,9 @@ def looks_pale(px, x, y):
     r, g, b, a = px[x, y]
     if a < 20: return True
     H, S, V = colorsys.rgb_to_hsv(r/255, g/255, b/255)
-    if V < 0.90: return False
-    return S <= 0.30 and (S <= 0.06 or 0.42 <= H <= 0.70)
+    if V < 0.90 or S > 0.30: return False
+    if 0.42 <= H <= 0.70: return True     # 연하늘색 글로우
+    return S <= 0.06 and b >= r           # 거의 흰색이면 차가울 때만 배경
 
 def glow_mask(im):
     """배경이면 0, 캐릭터면 255 인 이진 마스크."""
