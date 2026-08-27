@@ -80,10 +80,17 @@
             <span class="tag">천진난만함</span>
           </div>
         </div>
-        <!-- 카드 맨 아래 띠. 숫자를 받아 온 뒤에 js/page.js 가 보여 준다 -->
+        <!-- 카드 맨 아래 띠 둘. 인기 차트가 조회·좋아요를 나란히 세우듯 여기서도 같은
+             차례로 쌓는다. 조회는 읽기만 하는 값이라 버튼이 아니고, 좋아요만 누른다.
+             둘 다 숫자를 받아 온 뒤에 나타난다 (js/stats.js · js/page.js). -->
+        <div class="view-bar" hidden>
+          <span class="bar-icon" aria-hidden="true">🔎</span>
+          <span class="bar-label">조회</span>
+          <b data-view>0</b>
+        </div>
         <button class="like-btn" type="button" data-like hidden aria-pressed="false">
-          <span class="like-heart" aria-hidden="true">💖</span>
-          <span class="like-text">좋아요</span>
+          <span class="bar-icon like-heart" aria-hidden="true">❤️</span>
+          <span class="bar-label">좋아요</span>
           <b class="like-count">0</b>
         </button>
       </div>
@@ -106,9 +113,6 @@
   </main>
 
   <footer class="footer">
-    <p class="stats" id="statsBox" hidden>
-      <a class="stats-link" href="../stats.html">통계</a> · <span id="stats"></span>
-    </p>
     <p><a href="mailto:papa.ping@icloud.com">papa.ping@icloud.com</a> · 2026 · 딸에게 보여주려고 만든 비공식 팬 페이지입니다.
        광고나 후원 등 어떤 형태의 수익화도 하지 않습니다.</p>
     <p>캐릭터 이름·이미지 등 모든 권리는 <a href="https://samg.net/" rel="noopener nofollow" target="_blank">SAMG엔터테인먼트</a>에 있습니다.

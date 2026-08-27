@@ -67,7 +67,7 @@
 
   btn.addEventListener("click", async () => {
     if (liked()) {
-      showToast("이미 좋아요를 눌렀어요 💖", btn);
+      showToast("이미 좋아요를 눌렀어요 ❤️", btn);
       return;
     }
     remember();

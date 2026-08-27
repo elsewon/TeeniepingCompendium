@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>티니핑 도감 - 통계</title>
-  <meta name="description" content="목록·이름 맞추기·인기 차트의 방문과 공유 추이.">
+  <title>티니핑 도감 - 방문 통계</title>
+  <meta name="description" content="목록·이름 맞추기·인기 차트의 방문 추이와 방문 경로.">
   <link rel="icon" type="image/svg+xml" href="images/favicon.svg">
   <link rel="apple-touch-icon" href="images/heartsping.png">
   <link rel="stylesheet" href="css/styles.css">
@@ -25,10 +25,10 @@
   </header>
 
   <main class="wrap chart-page">
-    <h1>통계</h1>
+    <h1>방문 통계</h1>
 
     <ul class="tiles" id="tiles"></ul>
-    <p class="tiles-note">목록 · 이름 맞추기 · 인기 차트를 더한 값이에요.</p>
+    <p class="tiles-note">방문 수예요. 전체는 목록 · 이름 맞추기 · 인기 차트를 더한 값이고, 이 통계 페이지는 세지 않아요.</p>
 
     <h2>누적 그래프</h2>
     <div class="rank-tabs" id="spanTabs">
@@ -39,7 +39,6 @@
     </div>
 
     <figure class="chart-box">
-      <div class="chart-legend" id="chartLegend"></div>
       <div class="chart-plot" id="chartPlot"></div>
     </figure>
 
@@ -61,7 +60,7 @@
 
   <footer class="footer">
     <p class="stats" id="statsBox" hidden>
-      <a class="stats-link" href="stats.html">통계</a> · <span id="stats"></span>
+      <a class="stats-link" href="stats.html">방문 통계</a> · <span id="stats"></span>
     </p>
     <p><a href="mailto:papa.ping@icloud.com">papa.ping@icloud.com</a> · 2026 · 딸에게 보여주려고 만든 비공식 팬 페이지입니다.
        광고나 후원 등 어떤 형태의 수익화도 하지 않습니다.</p>

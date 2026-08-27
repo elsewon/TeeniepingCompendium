@@ -1,12 +1,12 @@
 /* ===== 통계 그래프 =====
- * Worker 의 /series 를 불러 목록·이름 맞추기·인기 차트의 방문·공유 추이를 그린다.
+ * Worker 의 /series 를 불러 목록·이름 맞추기·인기 차트의 방문 추이를 그린다.
  *
- * 여섯 줄을 색 여섯 가지로 나누는 대신 **영역 3색 × 선 모양 2종**으로 묶었다.
- * 데이터가 원래 (영역 × 방문/공유) 구조라 그 구조를 그대로 보여 주고,
- * 색이 세 가지뿐이라 색각 이상에서도 구별이 쉽다(모든 짝에서 검사 통과).
+ * 영역마다 색 하나씩, 세 줄이다. 색이 세 가지뿐이라 색각 이상에서도 구별이 쉽다
+ * (모든 짝에서 검사 통과).
  *
- * 색에만 기대지 않도록 실선(방문) 끝에 영역 이름을 직접 붙이고,
- * 범례·십자선 툴팁·표 보기를 함께 둔다.
+ * 색에만 기대지 않도록 선 끝에 영역 이름을 직접 붙인다. 범례는 두지 않는다 —
+ * 선이 셋뿐이고 그 끝에 이름이 이미 붙어 있어, 범례는 같은 말을 한 번 더 하는 자리였다.
+ * 십자선 툴팁과 표 보기로 값을 읽는다.
  *
  * 통계 페이지(stats.html) 자체는 세지 않으므로 여기에도 나오지 않는다.
  */
@@ -19,32 +19,22 @@ const CHART_API = "https://teenieping-counter.elsewon.workers.dev";
 let days = 7;
 
 /* 색은 dataviz 팔레트의 1~3번 슬롯. 세 색은 모든 짝에서 검사를 통과한다. */
-/* 켜고 끄는 것은 낱낱의 선이 아니라 '영역'과 '선 모양'이다. 범례가 색 3개와
-   선 모양 2개로만 되어 있으므로(drawLegend) 그 둘의 곱이 곧 보이는 선이 된다. */
 const SCOPES = [
-  { key: "list", label: "목록", on: true },
-  { key: "quiz", label: "이름 맞추기", on: true },
-  { key: "rank", label: "인기 차트", on: true },
+  { key: "list", label: "목록" },
+  { key: "quiz", label: "이름 맞추기" },
+  { key: "rank", label: "인기 차트" },
 ];
-const KINDS = [
-  { key: "visit", label: "방문", dash: "", on: true },
-  { key: "share", label: "공유", dash: "5 4", on: true },
-];
-const SERIES = SCOPES.flatMap((sc, i) =>
-  KINDS.map((k) => ({
-    id: `${sc.key}:${k.key}`,
-    label: `${sc.label} ${k.label}`,
-    color: `var(--series-${i + 1})`,
-    dash: k.dash,
-    scope: sc,
-    kind: k,
-  })));
-const shownSeries = () => SERIES.filter((s) => s.scope.on && s.kind.on);
+const SERIES = SCOPES.map((sc, i) => ({
+  id: `${sc.key}:visit`,
+  label: sc.label,
+  color: `var(--series-${i + 1})`,
+  scope: sc,
+}));
+const shownSeries = () => SERIES;
 
 const el = {
   spanTabs: document.getElementById("spanTabs"),
   tiles: document.getElementById("tiles"),
-  legend: document.getElementById("chartLegend"),
   plot: document.getElementById("chartPlot"),
   csvDownload: document.getElementById("csvDownload"),
   inflow: document.getElementById("inflowList"),
@@ -101,13 +91,12 @@ function draw() {
 
   const lines = shown.map((s) => {
     const pts = valuesOf(s.id).map((v, i) => `${x(i)},${y(v)}`).join(" ");
-    return `<polyline class="line" points="${pts}" stroke="${s.color}"
-      ${s.dash ? `stroke-dasharray="${s.dash}"` : ""}/>`;
+    return `<polyline class="line" points="${pts}" stroke="${s.color}"/>`;
   }).join("");
 
-  /* 색에만 기대지 않도록 실선(방문) 끝에 영역 이름을 직접 붙인다.
+  /* 색에만 기대지 않도록 선 끝에 영역 이름을 직접 붙인다.
      겹치면 아래로 밀어 12px 간격을 확보한다. */
-  const ends = shown.filter((s) => !s.dash)
+  const ends = shown
     .map((s) => ({ s, y: y(valuesOf(s.id)[n - 1]) }))
     .sort((a, b) => a.y - b.y);
   ends.forEach((e, i) => {
@@ -117,7 +106,7 @@ function draw() {
     y="${Math.min(e.y + 4, H - M.bottom)}" fill="${e.s.color}">${e.s.label}</text>`).join("");
 
   el.plot.innerHTML = `
-    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="영역별 방문·공유 추이">
+    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="영역별 방문 추이">
       ${grid}${xlabels}${lines}${endLabels}
       <g id="hoverLayer"></g>
       <rect id="hitArea" x="${M.left}" y="${M.top}" width="${plotW}" height="${plotH}" fill="transparent"/>
@@ -156,39 +145,10 @@ function hookHover({ x, y, n, shown }) {
   hit.addEventListener("touchend", leave);
 }
 
-/* ── 범례 · 표 ─────────────────────────────────
-   색 3개와 선 모양 2개로만 적는다. 이 그래프가 여섯 줄을 나누는 규칙이 그대로
-   (영역 3색 × 방문/공유 2모양)이므로, 범례도 그 두 벌만 보여 주면 된다.
-   여섯 칸에 "목록 방문 · 목록 공유 …" 를 다 적으면 영역 이름을 여섯 번
-   되풀이하게 되어 폰에서 세 줄로 접혔다. 지금은 360px 폰까지 한 줄, 그보다 좁아도
-   두 줄이다.
-
-   누르면 그 벌이 통째로 켜지고 꺼진다 — 색을 끄면 그 영역의 두 줄이, 선 모양을
-   끄면 모든 영역의 그 줄이 사라진다. 둘을 함께 쓰면 한 줄만 남길 수도 있다. */
-function drawLegend() {
-  // 모양 칸에만 표식을 그린다. 색 칸은 이름 자체를 그 색으로 적는다 —
-  // 그래프에서 선 끝에 붙는 영역 이름도 같은 색 글자라, 둘이 곧바로 이어진다.
-  const line = (dash) => `<svg width="20" height="10" aria-hidden="true">
-      <line x1="1" y1="5" x2="19" y2="5" stroke="var(--ink-soft)" stroke-width="2"
-        ${dash ? `stroke-dasharray="${dash}"` : ""}/></svg>`;
-
-  const colors = SCOPES.map((sc, i) =>
-    `<button class="legend-item legend-color${sc.on ? "" : " off"}" data-scope="${sc.key}"
-      type="button" style="color: var(--series-${i + 1})">${sc.label}</button>`).join("");
-
-  // 모양 칸은 색을 쓰지 않는다 — 여기서 알려 주는 것은 모양뿐이다
-  const shapes = KINDS.map((k) =>
-    `<button class="legend-item${k.on ? "" : " off"}" data-kind="${k.key}" type="button">
-      ${line(k.dash)}${k.label}
-    </button>`).join("");
-
-  el.legend.innerHTML = `<div class="legend-set">${colors}</div>` +
-    `<div class="legend-set">${shapes}</div>`;
-}
-
+/* ── 표 ───────────────────────────────────────── */
 /* 지금 보고 있는 그대로를 CSV 로. 엑셀이 한글을 깨뜨리지 않도록 BOM 을 붙인다. */
 function toCSV() {
-  const head = ["날짜", ...SERIES.map((s) => s.label)].join(",");
+  const head = ["날짜", ...SERIES.map((s) => `${s.label} 방문`)].join(",");
   const rows = data.dates.map((d, i) =>
     [d, ...SERIES.map((s) => valuesOf(s.id)[i])].join(","));
   return "\uFEFF" + [head, ...rows].join("\r\n") + "\r\n";
@@ -234,15 +194,22 @@ el.refTabs.addEventListener("click", (e) => {
 });
 
 /* 맨 위 요약 숫자 — 세 페이지를 더한 값이다. 어느 쪽이 얼마인지는 아래 그래프가 보여 준다. */
+/* 영역마다 묶음 하나씩, 그 안에 오늘·누적 두 줄이다.
+   기간으로 묶고 영역을 늘어놓아 보기도 했는데, 상자가 둘뿐이라 폭이 넓어져
+   이름과 숫자가 양 끝으로 갈라졌다. 축을 바꾸니 상자가 넷으로 좁아져 둘이 붙는다.
+   전체는 셋을 더한 값이라 맨 앞에 두고 숫자를 크게 해 다른 셋과 구별한다. */
 function drawTiles(stats) {
-  const sum = (kind) => SCOPES.reduce((a, s) => a + Number((stats[s.key] || {})[kind] || 0), 0);
-  const n = (v) => v.toLocaleString("ko-KR");
-  el.tiles.innerHTML = [
-    ["오늘 방문", sum("visitToday")],
-    ["누적 방문", sum("visitTotal")],
-    ["오늘 공유", sum("shareToday")],
-    ["누적 공유", sum("shareTotal")],
-  ].map(([label, v]) => `<li><b>${n(v)}</b><span>${label}</span></li>`).join("");
+  const n = (v) => Number(v || 0).toLocaleString("ko-KR");
+  const val = (key, kind) => Number((stats[key] || {})[kind] || 0);
+  const sum = (kind) => SCOPES.reduce((a, s) => a + val(s.key, kind), 0);
+  const group = (head, today, total, cls = "") => `<li class="${cls}">
+      <p class="tile-head">${head}</p>
+      <div class="tile-row"><span>오늘</span><b>${n(today)}</b></div>
+      <div class="tile-row"><span>누적</span><b>${n(total)}</b></div>
+    </li>`;
+  el.tiles.innerHTML =
+    group("전체", sum("visitToday"), sum("visitTotal"), "all") +
+    SCOPES.map((s) => group(s.label, val(s.key, "visitToday"), val(s.key, "visitTotal"))).join("");
 }
 
 async function loadTiles() {
@@ -255,19 +222,7 @@ async function loadTiles() {
 
 function redraw() {
   draw();
-  drawLegend();
 }
-
-el.legend.addEventListener("click", (e) => {
-  const btn = e.target.closest("[data-scope], [data-kind]");
-  if (!btn) return;
-  const list = btn.dataset.scope ? SCOPES : KINDS;
-  const item = list.find((x) => x.key === (btn.dataset.scope || btn.dataset.kind));
-  // 한 벌을 통째로 끄면 그릴 것이 없어진다 — 각 벌의 마지막 하나는 남긴다
-  if (item.on && list.filter((x) => x.on).length === 1) return;
-  item.on = !item.on;
-  redraw();
-});
 
 el.spanTabs.addEventListener("click", (e) => {
   const btn = e.target.closest("[data-days]");

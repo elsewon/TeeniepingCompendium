@@ -1,8 +1,8 @@
 /* ===== 이름 맞추기 (난도: 쉬움/보통/어려움) ===== */
 const MODES = {
-  easy:   { label: "🍭 쉬움", choices: true, silhouette: false },
-  normal: { label: "🍨 보통", choices: false, silhouette: false },
-  hard:   { label: "😎 어려움", choices: false, silhouette: true },
+  easy:   { choices: true, silhouette: false },
+  normal: { choices: false, silhouette: false },
+  hard:   { choices: false, silhouette: true },
 };
 
 const el = {
@@ -11,9 +11,7 @@ const el = {
   image: document.getElementById("quizImage"),
   answer: document.getElementById("answerArea"),
   next: document.getElementById("nextBtn"),
-  score: document.getElementById("score"),
-  modeLabel: document.getElementById("modeLabel"),
-  changeBtn: document.getElementById("changeBtn"),
+  modeBar: document.getElementById("modeBar"),
 };
 
 let mode = null;
@@ -39,10 +37,25 @@ function shuffle(arr) {
   return a;
 }
 
+/* 문제 화면 맨 위에 고른 난도를 보여 준다. 이름만 다시 적는 대신 난도 화면의 그 칸을
+   **그대로 복제해** 쓴다 — 이모지·설명·도전수까지 같은 것을 보게 되어, 방금 무엇을
+   골랐는지가 한눈에 이어진다. 복제본을 누르면 난도 화면으로 돌아간다.
+   data-mode 는 떼어 낸다. 난도를 고르는 클릭은 난도 화면의 칸에만 걸려 있으므로
+   복제본이 그 역할까지 물려받지 않게 하려는 것이다. */
+function drawModeCard() {
+  const src = el.diffScreen.querySelector(`.diff-card[data-mode="${mode}"]`);
+  if (!src) return;
+  const copy = src.cloneNode(true);
+  copy.removeAttribute("data-mode");
+  copy.setAttribute("aria-label", "난도 바꾸기");
+  copy.title = "난도 바꾸기";
+  el.modeBar.replaceChildren(copy);
+}
+
 function startMode(m) {
   mode = m;
   pool = [];
-  el.modeLabel.textContent = "난도: " + MODES[m].label;
+  drawModeCard();
   el.diffScreen.hidden = true;
   el.stage.hidden = false;
   nextQuestion();
@@ -70,7 +83,6 @@ function nextQuestion() {
 
   // 정답 영역 — 두 그리기 함수가 #answerArea 를 통째로 다시 쓴다
   MODES[mode].choices ? renderChoices() : renderNameSlot();
-  updateScore();
 }
 
 /* 정답이 공개되는 순간 나오는 '정답 행'.
@@ -113,14 +125,6 @@ function armRows(box) {
   setTimeout(() => {
     box.querySelectorAll(".answer-row").forEach((r) => r.classList.add("armed"));
   }, 350);
-}
-
-function updateScore() {
-  const n = (v) => Number(v || 0).toLocaleString("ko-KR");
-  // 통계가 오기 전이나 꺼져 있을 때는 예전처럼 전체 마릿수를 보여 준다
-  el.score.textContent = modeCounts
-    ? `주간 도전 ${n(modeCounts.week[mode])}  ·  월간 도전 ${n(modeCounts.month[mode])}`
-    : `전체 ${quizPool().length}마리`;
 }
 
 /* --- 보통/어려움: 이름 가리기 --- */
@@ -179,7 +183,6 @@ function renderChoices() {
         o, o.id === current.id ? "correct" : o.id === chosenId ? "wrong" : null)).join("")
     }</div>`;
     armRows(el.answer);
-    updateScore();
   };
 
   btns.forEach((btn) => {
@@ -195,12 +198,27 @@ function renderChoices() {
 el.diffScreen.querySelectorAll(".diff-card").forEach((card) => {
   card.addEventListener("click", () => startMode(card.dataset.mode));
 });
-el.changeBtn.addEventListener("click", backToDifficulty);
+el.modeBar.addEventListener("click", backToDifficulty);
 el.next.addEventListener("click", nextQuestion);
+
+/* 난도 고르는 화면의 각 칸 오른쪽에 주간·월간 도전수를 두 줄로 적는다.
+   고르기 전에 어느 난도를 얼마나 해 봤는지 보이는 편이 고르는 데 도움이 된다.
+   문제 화면 맨 위에도 이 칸이 그대로 올라가므로(drawModeCard), 고르기 전과 푸는 중에
+   같은 숫자를 같은 자리에서 보게 된다. */
+function drawModeCounts() {
+  if (!modeCounts || !modeCounts.week || !modeCounts.month) return;
+  const n = (v) => Number(v || 0).toLocaleString("ko-KR");
+  el.diffScreen.querySelectorAll("[data-count]").forEach((box) => {
+    const m = box.dataset.count;
+    box.innerHTML = `<span>주간 도전 ${n(modeCounts.week[m])}</span>` +
+      `<span>월간 도전 ${n(modeCounts.month[m])}</span>`;
+  });
+}
 
 document.addEventListener("ping:stats", (e) => {
   const m = (e.detail || {}).mode;
   if (!m || !m.week || !m.month) return;
   modeCounts = m;
-  if (mode) updateScore();          // 퀴즈를 푸는 중이면 바로 반영
+  drawModeCounts();
+  if (mode) drawModeCard();         // 푸는 중이면 위에 얹힌 칸까지 다시 그린다
 });

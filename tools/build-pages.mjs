@@ -54,7 +54,9 @@ function section(tag) {
   return reroot(m[0]);
 }
 const HEADER = section("header");
-const FOOTER = section("footer");
+/* 개별 페이지 꼬리말에서는 통계줄을 뺀다. 이 페이지의 숫자(조회·좋아요)는
+   카드 아래 띠에 붙어 있어, 꼬리말에 또 적으면 같은 말을 두 번 하는 꼴이다. */
+const FOOTER = section("footer").replace(/\s*<p class="stats"[\s\S]*?<\/p>/, "");
 
 /* ── 관계 목록 ───────────────────────────── */
 /* 예전에는 SVG 관계 그래프를 그렸다. 관계는 많아야 5개(0개가 118마리)라
@@ -162,10 +164,17 @@ ${HEADER}
             ${t.emotion ? `<span class="tag">${esc(t.emotion)}</span>` : ""}
           </div>
         </div>
-        <!-- 카드 맨 아래 띠. 숫자를 받아 온 뒤에 js/page.js 가 보여 준다 -->
+        <!-- 카드 맨 아래 띠 둘. 인기 차트가 조회·좋아요를 나란히 세우듯 여기서도 같은
+             차례로 쌓는다. 조회는 읽기만 하는 값이라 버튼이 아니고, 좋아요만 누른다.
+             둘 다 숫자를 받아 온 뒤에 나타난다 (js/stats.js · js/page.js). -->
+        <div class="view-bar" hidden>
+          <span class="bar-icon" aria-hidden="true">🔎</span>
+          <span class="bar-label">조회</span>
+          <b data-view>0</b>
+        </div>
         <button class="like-btn" type="button" data-like hidden aria-pressed="false">
-          <span class="like-heart" aria-hidden="true">💖</span>
-          <span class="like-text">좋아요</span>
+          <span class="bar-icon like-heart" aria-hidden="true">❤️</span>
+          <span class="bar-label">좋아요</span>
           <b class="like-count">0</b>
         </button>
       </div>

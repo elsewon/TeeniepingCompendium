@@ -307,22 +307,30 @@ a { color: inherit; text-decoration: none; }
    .detail-card 가 overflow: hidden 이라 아래 모서리는 알아서 둥글게 잘린다.
    누르기 전에는 하트를 흐리게 두어 "아직 안 눌렀다" 를 색으로 알린다.
    되돌리는 길은 없다 (worker/counter.js 참고). */
-.like-btn {
+/* 조회 띠와 좋아요 띠는 같은 모양이다 — 인기 차트가 조회·좋아요를 나란히 세우니
+   개별 페이지에서도 같은 차례로 쌓아 두 화면이 같은 말을 하게 한다.
+   다른 점은 조회가 읽기만 하는 값이라 버튼이 아니고 색이 차분하다는 것뿐이다. */
+.view-bar, .like-btn {
   display: flex; width: 100%; align-items: center; justify-content: center; gap: 8px;
-  padding: 13px; cursor: pointer;
+  padding: 13px;
   border: 0; border-top: 1px solid var(--line); border-radius: 0;
   background: transparent;
-  font-family: inherit; font-weight: 800; font-size: 15px; color: var(--pink);
-  transition: background .15s;
+  font-family: inherit; font-weight: 800; font-size: 15px;
 }
+.view-bar[hidden] { display: none; }
+.view-bar { color: var(--ink-soft); }
+.view-bar b { font-size: 16px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.bar-icon { font-size: 18px; }
+.like-btn { cursor: pointer; color: var(--pink); transition: background .15s; }
 /* [hidden] 은 UA 스타일이라 위의 display 에 밀린다. 눌러도 아무 일이 없는 버튼이
    Worker 없이 남지 않도록 여기서 다시 끈다. */
 .like-btn[hidden] { display: none; }
 .like-btn:hover { background: #fff0f6; }
-.like-btn .like-heart { font-size: 18px; filter: grayscale(1); opacity: .5; transition: .15s; }
+.like-btn .like-heart { filter: grayscale(1); opacity: .5; transition: .15s; }
 .like-btn.liked { background: var(--pink-soft); color: #c02d68; }
 .like-btn.liked .like-heart { filter: none; opacity: 1; }
 .like-count { font-size: 16px; color: var(--ink); font-variant-numeric: tabular-nums; }
+
 .info-block { margin-bottom: 18px; }
 .info-block h3 {
   font-size: 14px; color: var(--pink); margin: 0 0 6px; font-weight: 800;
@@ -369,9 +377,10 @@ a.rel-item:hover { transform: translateY(-2px); border-color: var(--pink); box-s
 .quiz { padding-block: 26px 70px; text-align: center; }   /* 좌우는 .wrap 이 담당 */
 .quiz h1 { font-size: 30px; margin: 0 0 6px; }
 .quiz .sub { color: var(--ink-soft); font-weight: 600; margin: 0 0 8px; }
-.quiz-score { font-weight: 800; color: var(--purple); margin-bottom: 18px; }
+/* 난도 칸·문제 칸·인기 차트 행이 모두 430px 이다. 세 화면을 오갈 때 같은 폭이라
+   내용만 바뀌고 틀은 그대로 있는 것처럼 보인다 (.difficulty-screen · .mode-bar · .rank-cols). */
 .quiz-stage {
-  max-width: 420px; margin: 0 auto; background: var(--card); border-radius: var(--radius);
+  max-width: 430px; margin: 0 auto; background: var(--card); border-radius: var(--radius);
   box-shadow: var(--shadow); border: 1px solid var(--line); padding: 26px; position: relative;
 }
 .quiz-image { border-radius: var(--radius-sm); overflow: hidden; margin-bottom: 18px; background: var(--pink-soft); }
@@ -442,7 +451,7 @@ a.rel-item:hover { transform: translateY(-2px); border-color: var(--pink); box-s
 .answer-row.wrong .mark { color: #c02d68; }
 @keyframes reveal-pop { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: none; } }
 /* 난도 선택 화면 */
-.difficulty-screen { max-width: 460px; margin: 8px auto 0; display: grid; gap: 12px; }
+.difficulty-screen { max-width: 430px; margin: 8px auto 0; display: grid; gap: 12px; }
 .difficulty-screen[hidden] { display: none; }   /* 위와 같은 이유 */
 .diff-card {
   display: flex; align-items: center; gap: 15px; padding: 18px 20px; text-align: left;
@@ -451,13 +460,27 @@ a.rel-item:hover { transform: translateY(-2px); border-color: var(--pink); box-s
 }
 .diff-card:hover { border-color: var(--pink); transform: translateY(-3px); box-shadow: var(--shadow-hover); }
 .diff-card .emoji { font-size: 30px; line-height: 1; }
-.diff-card .txt { display: flex; flex-direction: column; }
+.diff-card .txt { display: flex; flex-direction: column; min-width: 0; }
 .diff-card .t { font-weight: 800; font-size: 18px; color: var(--ink); }
 .diff-card .d { color: var(--ink-soft); font-weight: 600; font-size: 13px; }
+/* 난도별 도전수 — 칸 오른쪽 끝에 주간·월간 두 줄.
+   짜임과 색을 인기 차트 행의 숫자(.rank-nums)와 똑같이 맞춘다 — 오른쪽 끝에 붙인
+   세로 두 줄, 같은 --ink-soft. 두 화면에서 같은 성격의 숫자가 같은 모습이어야
+   눈이 자리를 다시 찾지 않는다.
+   tabular-nums 를 써서 자릿수가 달라도 세 칸의 숫자 끝이 세로로 가지런하다.
+   통계 서버가 꺼져 있거나 아직 안 왔으면 js 가 비워 두고, 빈 칸이면 자리도
+   차지하지 않게 한다(:empty) — 설명 옆이 허전해 보이지 않도록. */
+.diff-card .c {
+  margin-left: auto; display: flex; flex-direction: column; align-items: flex-end;
+  gap: 2px; text-align: right; white-space: nowrap;
+  font-size: 12px; font-weight: 700; color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+.diff-card .c:empty { display: none; }
 
-/* 난도 표시 바 */
-.mode-bar { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 14px; }
-.mode-bar .cur { font-weight: 800; color: var(--purple); }
+/* 고른 난도를 얹어 두는 자리. 난도 화면(.difficulty-screen)과 같은 폭·같은 칸이라
+   고르기 전과 고른 뒤가 이어져 보인다. 누르면 난도 화면으로 돌아간다. */
+.mode-bar { max-width: 430px; margin: 0 auto 14px; display: grid; }
 
 /* 어려움: 실루엣 */
 .quiz-image.silhouette img, .quiz-image.silhouette svg { filter: brightness(0); transition: filter .35s; }
@@ -514,11 +537,10 @@ a.rel-item:hover { transform: translateY(-2px); border-color: var(--pink); box-s
 }
 .rank-arrow:hover:not(:disabled) { border-color: var(--pink); color: var(--pink); }
 .rank-arrow:disabled { opacity: .35; cursor: default; }
-/* 조회·좋아요·공유 순위 — 화면 폭과 상관없이 한 단으로 위에서 아래로 늘어놓는다.
-   두 단으로 나누면 세 번째 목록만 다음 줄에 홀로 남아 짝이 맞지 않는다.
+/* 조회·좋아요 순위 — 좁은 화면에서는 한 단으로 위에서 아래로 늘어놓는다.
 
-   폭은 한 줄에 필요한 최소값(430px)에 고정하고 가운데 정렬한다. 넓은 화면에서
-   .wrap(1080px)까지 늘리면 이름과 숫자 사이만 벌어져 눈이 그 빈 곳을 건너뛰어야 한다.
+   한 단의 폭은 한 줄에 필요한 최소값(430px)에 고정하고 가운데 정렬한다. 이보다 넓히면
+   (예: .wrap 의 1080px) 이름과 숫자 사이만 벌어져 눈이 그 빈 곳을 건너뛰어야 한다.
      내림 16 + 순위 60 + (10 + 그림 54) + 8 + 이름·태그 160 + 10 + 숫자 85 + 16 ≈ 430
    좁은 화면에서는 max-width 라 알아서 줄어든다.
    (이름 글자 크기나 순위 칸 폭을 바꾸면 이 값도 같이 손봐야 한다) */
@@ -526,10 +548,21 @@ a.rel-item:hover { transform: translateY(-2px); border-color: var(--pink); box-s
   display: grid; grid-template-columns: 1fr; gap: 20px;
   max-width: 430px; margin: 0 auto;
 }
+/* 두 단이 온전히 들어갈 만큼 넓으면 나란히 놓는다. 목록이 둘뿐이라 짝이 맞는다 —
+   공유 순위가 있던 시절에는 세 번째가 다음 줄에 홀로 남아 한 단으로만 두었다.
+   두 순위를 한 화면에서 견주어 볼 수 있고, 스크롤도 절반으로 준다.
+     기준 폭 = 430 × 2 + 단 사이 24 + .wrap 좌우 여백 20 × 2 = 924
+   단 하나는 여기서도 430 을 지키므로 행 모양은 좁은 화면과 똑같다. */
+@media (min-width: 924px) {
+  .rank-cols {
+    grid-template-columns: 1fr 1fr; column-gap: 24px;
+    max-width: 884px;
+  }
+}
 .rank-cols h2 { font-size: 17px; margin: 8px 0 10px; }
 /* 빈 목록·불러오는 중 문구. .empty 기본값(60px)은 목록 페이지처럼 화면 하나를
-   통째로 채울 때를 위한 값이라, 목록이 셋이나 세로로 놓이는 여기서는 과하다
-   (세 기간 모두 비면 여백만 360px 이 된다). 방문 경로 목록도 같은 이유로 줄여 뒀다. */
+   통째로 채울 때를 위한 값이라, 순위 목록이 둘씩 놓이는 여기서는 과하다.
+   방문 경로 목록도 같은 이유로 줄여 뒀다. */
 .rank-cols .empty { padding: 18px 16px; }
 /* 간격은 요소마다 따로 준다. 행 전체에 gap 하나를 쓰면 순위↔그림만 좁힐 수 없어
    음수 마진 같은 편법이 필요해진다. 아래 margin-left 세 값이 각 사이의 간격이다. */
@@ -615,19 +648,32 @@ a.rel-item:hover { transform: translateY(-2px); border-color: var(--pink); box-s
   }
 }
 /* 맨 위 요약 숫자 */
+/* 영역마다 묶음 하나씩(전체·목록·이름 맞추기·인기 차트), 그 안에 오늘·누적 두 줄.
+   상자가 넷이라 폭이 좁고, 그래서 이름과 숫자가 붙어 한눈에 읽힌다
+   (기간으로 묶어 상자를 둘로 두었을 때는 양 끝으로 갈라졌다).
+   숫자는 오른쪽 끝에 맞추고 tabular-nums 를 써서 자릿수가 달라도 가지런하다.
+   좁은 화면에서는 auto-fit 이 2×2 로 접는다. */
 .tiles {
   list-style: none; margin: 16px 0 6px; padding: 0;
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); gap: 10px;
 }
-.tiles li {
+.tiles > li {
   background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-sm);
-  box-shadow: var(--shadow); padding: 14px 10px;
+  box-shadow: var(--shadow); padding: 11px 13px 9px; text-align: left;
 }
-.tiles b {
-  display: block; font-size: 30px; font-weight: 800; line-height: 1.1;
-  font-variant-numeric: tabular-nums;
+.tile-head {
+  margin: 0 0 7px; padding-bottom: 6px; border-bottom: 1px solid var(--line);
+  font-size: 12.5px; font-weight: 800; color: var(--ink-soft);
 }
-.tiles span { display: block; margin-top: 3px; font-size: 12.5px; font-weight: 700; color: var(--ink-soft); }
+.tile-row {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+  padding: 1px 0;
+}
+.tile-row span { font-size: 12.5px; font-weight: 700; color: var(--ink-soft); white-space: nowrap; }
+.tile-row b { font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; }
+/* 전체는 나머지 셋을 더한 값이라 이름을 진하게, 숫자를 크게 해 앞자리임을 드러낸다 */
+.tiles > li.all .tile-head { color: var(--ink); }
+.tiles > li.all .tile-row b { font-size: 24px; line-height: 1.15; }
 .tiles-note { color: var(--ink-soft); font-size: 12px; font-weight: 700; margin: 0 0 4px; }
 .chart-page h2 { font-size: 17px; margin: 20px 0 4px; text-align: center; }
 
@@ -636,22 +682,7 @@ a.rel-item:hover { transform: translateY(-2px); border-color: var(--pink); box-s
   background: var(--card); border: 1px solid var(--line);
   border-radius: var(--radius); box-shadow: var(--shadow);
 }
-/* 범례는 두 벌이다 — 색 3개(영역)와 선 모양 2개(방문/공유).
-   벌은 통째로 다음 줄로 넘어가므로 접혀도 "색 한 줄 · 모양 한 줄" 이다
-   (360px 폰까지는 다섯 칸이 한 줄에 들어간다).
-   여섯 칸에 "목록 방문 · 목록 공유 …" 를 다 적던 때는 세 줄이었다. */
-.chart-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 18px; margin-bottom: 6px; }
-.legend-set { display: flex; align-items: center; gap: 2px; }
-.legend-item {
-  display: inline-flex; align-items: center; gap: 5px;
-  background: none; border: 0; padding: 4px 5px; border-radius: 8px;
-  color: var(--ink-soft); font-size: 12.5px; font-weight: 700; cursor: pointer;
-  white-space: nowrap;
-}
-/* 색 칸은 표식 없이 이름을 그 색으로 적는다 (색은 js 가 인라인으로 넣는다) */
-.legend-color { font-weight: 800; }
-.legend-item:hover { background: var(--bg); }
-.legend-item.off { opacity: .38; }
+/* 범례는 두지 않는다 — 선 끝에 영역 이름이 이미 붙는다 (js/chart.js) */
 .chart-plot { position: relative; }
 .chart-plot svg { width: 100%; height: auto; display: block; }
 .chart-plot .grid { stroke: var(--line); stroke-width: 1; }

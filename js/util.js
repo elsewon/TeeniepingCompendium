@@ -174,12 +174,6 @@ function copyText(text) {
   return navigator.clipboard.writeText(text);
 }
 
-/* 공유가 실제로 이뤄졌음을 알린다 — js/stats.js 가 받아서 센다.
-   시트를 열었다 그냥 닫은 경우(AbortError)는 부르지 않는다. */
-function sharedOnce() {
-  document.dispatchEvent(new CustomEvent("ping:share"));
-}
-
 async function sharePage(btn) {
   const url = shareUrl();
   const title = document.title;
@@ -187,7 +181,6 @@ async function sharePage(btn) {
   if (navigator.share) {
     try {
       await navigator.share({ title, url });
-      sharedOnce();
       return;
     } catch (err) {
       // 사용자가 공유 시트를 닫은 것뿐이면 아무 일도 하지 않는다
@@ -198,8 +191,7 @@ async function sharePage(btn) {
 
   try {
     await copyText(url);
-    sharedOnce();
-    showToast("링크를 복사했어요 💗", btn);
+    showToast("링크를 복사했어요 😄", btn);
     if (btn) {
       btn.classList.add("done");
       setTimeout(() => btn.classList.remove("done"), 1400);

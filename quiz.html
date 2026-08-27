@@ -50,24 +50,25 @@
       <button class="diff-card" data-mode="easy">
         <span class="emoji">🍭</span>
         <span class="txt"><span class="t">쉬움</span><span class="d">이미지 보고 이름 선택지 3개 중 고르기</span></span>
+        <span class="c" data-count="easy"></span>
       </button>
       <button class="diff-card" data-mode="normal">
         <span class="emoji">🍨</span>
         <span class="txt"><span class="t">보통</span><span class="d">이름 가리기 · 눌러서 정답 확인</span></span>
+        <span class="c" data-count="normal"></span>
       </button>
       <button class="diff-card" data-mode="hard">
         <span class="emoji">😎</span>
         <span class="txt"><span class="t">어려움</span><span class="d">실루엣만 보고 맞히기 · 눌러서 정답 확인</span></span>
+        <span class="c" data-count="hard"></span>
       </button>
     </div>
 
     <!-- 퀴즈 진행 화면 -->
     <div id="stage" hidden>
-      <div class="mode-bar">
-        <span class="cur" id="modeLabel"></span>
-        <button class="chip" id="changeBtn">난도 바꾸기</button>
-      </div>
-      <p class="quiz-score" id="score"></p>
+      <!-- 고른 난도를 난도 화면의 그 칸 그대로 보여 준다 (js 가 복제해 넣는다).
+           누르면 난도 고르는 화면으로 돌아간다. -->
+      <div class="mode-bar" id="modeBar"></div>
 
       <div class="quiz-stage">
         <div class="quiz-image" id="quizImage"></div>
@@ -81,7 +82,7 @@
 
   <footer class="footer">
     <p class="stats" id="statsBox" hidden>
-      <a class="stats-link" href="stats.html">통계</a> · <span id="stats"></span>
+      <a class="stats-link" href="stats.html">방문 통계</a> · <span id="stats"></span>
     </p>
     <p><a href="mailto:papa.ping@icloud.com">papa.ping@icloud.com</a> · 2026 · 딸에게 보여주려고 만든 비공식 팬 페이지입니다.
        광고나 후원 등 어떤 형태의 수익화도 하지 않습니다.</p>
