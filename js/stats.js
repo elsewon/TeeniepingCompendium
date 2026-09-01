@@ -141,7 +141,7 @@ async function countVisit() {
   publish(stats);
 }
 
-/* 퀴즈에서 문제가 나올 때마다 js/quiz.js 가 이 신호를 보낸다 (난도별 도전수) */
+/* 퀴즈에서 정답이 공개될 때마다 js/quiz.js 가 이 신호를 보낸다 (난도별 도전수) */
 document.addEventListener("ping:quiz", async (e) => {
   const mode = e.detail && e.detail.mode;
   if (!mode) return;

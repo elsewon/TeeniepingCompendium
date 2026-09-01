@@ -272,24 +272,45 @@ function speakBlockBtnHTML(label) {
    끄는 일을 막는다. */
 let speakingBtn = null;
 let speakSeq = 0;
+let seriesId = 0;               // 이어 읽기 한 벌을 가리키는 표
+let seriesTimer = null;
 
 function stopSpeaking() {
   speakSeq++;                     // 이 뒤에 오는 옛 신호는 모두 무시한다
+  seriesId++;                     // 이어 읽기도 여기서 끊는다
+  clearTimeout(seriesTimer);
+  seriesTimer = null;
   if (speakingBtn) speakingBtn.classList.remove("speaking");
   speakingBtn = null;
   try { window.speechSynthesis.cancel(); } catch { /* 못 멈춰도 표시는 되돌린다 */ }
 }
 
-function speakText(text, btn) {
+/* 사파리는 cancel() 뒤 엔진이 멈춘 상태로 남아 다음 발화를 삼킬 때가 있다.
+   speak 직후 resume() 을 한 번 불러 풀어 준다 (다른 브라우저에서는 하는 일이 없다). */
+function pushUtterance(u) {
+  const synth = window.speechSynthesis;
+  synth.speak(u);
+  try { synth.resume(); } catch { /* 없는 브라우저도 있다 */ }
+}
+
+/* 한 낱말을 읽는다. 멈추는 일은 하지 않는다 — 이어 읽기가 제 차례를 스스로 끊지
+   않도록, 멈출지는 부르는 쪽이 정한다.
+   btn 을 주면 읽는 동안 그 버튼이 펄스로 뛴다 (css 의 audio-pulse). */
+/* 소리로 낼 글로 다듬는다.
+   두 마리를 묶은 이름(「커핑&머핑」·「노라핑&노리핑」)의 & 를 엔진이 "앰퍼샌드"
+   처럼 기호 이름 그대로 읽어 버린다. 눈으로는 & 가 맞으니 화면은 그대로 두고,
+   읽을 때만 빈칸으로 바꿔 두 이름을 나란히 읽게 한다 — 지워 붙이면 "커핑머핑"
+   한 낱말이 되어 두 마리인 줄 모른다. */
+function forSpeech(text) {
+  return String(text).replace(/&/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function speakOne(text, btn, onDone) {
   const synth = window.speechSynthesis;
   if (!synth || !text) return;
 
-  const again = speakingBtn != null && speakingBtn === btn;
-  // 아래 보험이 먼저 깨어나 표시만 꺼진 뒤라도 겹쳐 읽지 않도록 실제 상태도 함께 본다
-  if (speakingBtn || synth.speaking) stopSpeaking();
-  if (again) return;              // 같은 버튼을 다시 누른 것 = 멈추기
-
-  const u = new SpeechSynthesisUtterance(String(text));
+  const said = forSpeech(text);
+  const u = new SpeechSynthesisUtterance(said);
   u.lang = "ko-KR";
   u.rate = 0.9;     // 아이가 따라 들을 수 있게 조금 천천히
   u.pitch = 1.15;
@@ -297,22 +318,72 @@ function speakText(text, btn) {
   if (ko) u.voice = ko;
 
   const token = ++speakSeq;
+  let finished = false;
   const done = () => {
-    if (token !== speakSeq) return;   // 이미 멈췄거나 다음 이름으로 넘어갔다
+    // onend 와 아래 시간 보험이 둘 다 깨어날 수 있다. 한 번만 돌게 막아 두지 않으면
+    // 이어 읽기가 한 칸씩 건너뛴다.
+    if (finished || token !== speakSeq) return;
+    finished = true;
     if (speakingBtn) speakingBtn.classList.remove("speaking");
     speakingBtn = null;
+    if (onDone) onDone();
   };
   u.onend = done;
   u.onerror = done;
   // onend 를 주지 않는 브라우저가 있어 시간으로도 끈다. 이름 한 낱말과
   // 수백 자짜리 줄거리는 걸리는 시간이 아주 다르므로 글 길이에 맞춰 잡는다.
-  setTimeout(done, Math.max(5000, String(text).length * 600));
+  setTimeout(done, Math.max(5000, said.length * 600));
 
   speakingBtn = btn || null;
   if (btn) btn.classList.add("speaking");
   // 취소 직후라도 speak 는 곧바로 부른다 — 사파리는 누른 그 흐름 안에서
   // 불러야 소리를 내 준다 (setTimeout 으로 미루면 무시될 수 있다).
-  synth.speak(u);
+  pushUtterance(u);
+}
+
+function speakText(text, btn) {
+  const synth = window.speechSynthesis;
+  if (!synth || !text) return;
+  const again = speakingBtn != null && speakingBtn === btn;
+  // 아래 보험이 먼저 깨어나 표시만 꺼진 뒤라도 겹쳐 읽지 않도록 실제 상태도 함께 본다
+  if (speakingBtn || synth.speaking) stopSpeaking();
+  if (again) return;              // 같은 버튼을 다시 누른 것 = 멈추기
+  speakOne(text, btn);
+}
+
+/* 사파리는 사용자가 조작하기 전에는 소리를 내 주지 않는다. 아래 speakSeries 는
+   텀을 두고 읽으므로 그때는 이미 누른 흐름 밖이다. 그래서 흐름 안에 있는 지금
+   (누른 그 순간) 소리 없는 발화를 흘려 엔진을 깨워 둔다. */
+function primeSpeech() {
+  const synth = window.speechSynthesis;
+  if (!synth) return;
+  try {
+    const u = new SpeechSynthesisUtterance(" ");
+    u.volume = 0;
+    synth.speak(u);
+  } catch { /* 못 깨워도 버튼 누르기는 그대로 된다 */ }
+}
+
+/* 이름 여럿을 텀을 두고 차례로 읽는다 (이름 맞추기의 선택지 셋).
+   items 는 { text, btn } 목록 — btn 을 주면 읽는 동안 그 버튼이 펄스로 뛴다.
+   나타나고 gap 만큼 쉰 뒤 첫 이름을 읽고, 하나가 끝날 때마다 다시 gap 만큼 쉰다.
+   쉬는 참이 있어야 아이가 방금 들은 이름을 그림과 맞춰 볼 틈이 생긴다. */
+function speakSeries(items, gap = 500) {
+  const list = (items || []).filter((it) => it && it.text);
+  if (!window.speechSynthesis || !list.length) return;
+  stopSpeaking();
+  primeSpeech();                  // 흐름 안에서 미리 깨워 둔다
+  const id = seriesId;            // stopSpeaking 이 올려 둔 이번 벌의 표
+  let i = 0;
+  const step = () => {
+    if (id !== seriesId || i >= list.length) return;   // 그새 멈췄거나 다 읽었다
+    const it = list[i++];
+    speakOne(it.text, it.btn, () => {
+      if (id !== seriesId) return;
+      seriesTimer = setTimeout(step, gap);
+    });
+  };
+  seriesTimer = setTimeout(step, gap);
 }
 
 document.addEventListener("click", (e) => {

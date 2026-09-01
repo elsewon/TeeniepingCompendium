@@ -149,7 +149,7 @@ function page(t) {
 ${HEADER}
 
   <main class="wrap detail">
-    <a class="back-link" href="${UP}index.html">← 목록으로</a>
+    <a class="back-link" href="${UP}index.html"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5 8 12l7 7"/></svg>목록으로</a>
     <div class="detail-top">
       <!-- 목록 카드와 같은 짜임 — 그림 아래에 이름·태그 -->
       <div class="detail-card">

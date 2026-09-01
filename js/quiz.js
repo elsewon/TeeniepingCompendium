@@ -15,7 +15,7 @@ const el = {
 };
 
 let mode = null;
-/* 난도별 주간·월간 도전수. js/stats.js 가 받아 온 것을 이벤트로 넘겨받는다
+/* 난도별 오늘·누적 도전수. js/stats.js 가 받아 온 것을 이벤트로 넘겨받는다
    (같은 정보를 두 번 요청하지 않으려고). */
 let modeCounts = null;
 let pool = [];
@@ -66,7 +66,21 @@ function backToDifficulty() {
   el.diffScreen.hidden = false;
 }
 
+/* 「다음 티니핑」은 정답을 본 뒤에야 열린다.
+   답을 고르기 전에 넘길 수 있으면 문제를 본 줄 모르고 지나가는데, 도전 수는
+   그대로 올라간다. 잠금 표시는 순위 페이지의 화살표 버튼과 같다 (.btn:disabled). */
+function lockNext(locked) { el.next.disabled = locked; }
+
+/* 정답이 나온 순간 — 「다음 티니핑」을 열고, 도전 한 번을 센다.
+   문제가 뜬 때가 아니라 답을 본 때 세는 이유: 스쳐 지나간 문제는 푼 것이 아니다.
+   난도를 고르자마자 되돌아 나오면 한 번도 세지 않는다. */
+function revealed() {
+  lockNext(false);
+  document.dispatchEvent(new CustomEvent("ping:quiz", { detail: { mode } }));  // js/stats.js
+}
+
 function nextQuestion() {
+  lockNext(true);
   if (!quizPool().length) {
     el.image.innerHTML = "";
     el.answer.innerHTML = `<div class="name-slot"><span class="hint">데이터가 아직 없어요</span></div>`;
@@ -74,8 +88,6 @@ function nextQuestion() {
   }
   if (!pool.length) pool = shuffle(quizPool());
   current = pool.pop();
-  // 문제 하나 = 도전 한 번. js/stats.js 가 받아서 난도별로 센다.
-  document.dispatchEvent(new CustomEvent("ping:quiz", { detail: { mode } }));
 
   // 이미지 (어려움: 실루엣)
   el.image.innerHTML = imageMarkup(current, 380);
@@ -140,6 +152,8 @@ function renderNameSlot() {
     el.answer.innerHTML = answerRowHTML(current);
     armRows(el.answer);
     el.image.classList.remove("silhouette"); // 어려움: 실제 이미지 공개
+    speakText(current.nameKo, el.answer.querySelector(".answer-row [data-speak]"));
+    revealed();
   };
   slot.addEventListener("click", act);
   slot.addEventListener("keydown", (e) => {
@@ -167,6 +181,14 @@ function renderChoices() {
   }</div>`;
 
   const btns = [...el.answer.querySelectorAll(".choice-btn")];
+
+  // 선택지 셋을 텀을 두고 차례로 읽어 준다 — 한글을 아직 못 읽는 아이도 보기를 귀로
+  // 훑고 고르도록. 읽는 동안에는 그 선택지의 버튼이 펄스로 뛰어, 지금 어느 이름을
+  // 읽는지 눈으로도 따라갈 수 있다.
+  speakSeries(btns.map((b) => ({
+    text: b.querySelector(".choice-name").textContent,
+    btn: b.querySelector("[data-speak]"),
+  })));
   let settled = false;
 
   const pick = (btn, e) => {
@@ -183,6 +205,9 @@ function renderChoices() {
         o, o.id === current.id ? "correct" : o.id === chosenId ? "wrong" : null)).join("")
     }</div>`;
     armRows(el.answer);
+    // 정답이 무엇이었는지 귀로도 알려 준다. 정답 행의 버튼이 펄스로 뛴다.
+    speakText(current.nameKo, el.answer.querySelector(".answer-row.correct [data-speak]"));
+    revealed();
   };
 
   btns.forEach((btn) => {
@@ -201,23 +226,25 @@ el.diffScreen.querySelectorAll(".diff-card").forEach((card) => {
 el.modeBar.addEventListener("click", backToDifficulty);
 el.next.addEventListener("click", nextQuestion);
 
-/* 난도 고르는 화면의 각 칸 오른쪽에 주간·월간 도전수를 두 줄로 적는다.
+/* 난도 고르는 화면의 각 칸 오른쪽에 오늘·누적 도전수를 두 줄로 적는다.
+   영역별 방문을 오늘·누적으로 보여 주는 것과 같은 짝이다 — 통계 페이지에서
+   이미 익힌 읽는 법이 여기서도 그대로 통한다.
    고르기 전에 어느 난도를 얼마나 해 봤는지 보이는 편이 고르는 데 도움이 된다.
    문제 화면 맨 위에도 이 칸이 그대로 올라가므로(drawModeCard), 고르기 전과 푸는 중에
    같은 숫자를 같은 자리에서 보게 된다. */
 function drawModeCounts() {
-  if (!modeCounts || !modeCounts.week || !modeCounts.month) return;
+  if (!modeCounts || !modeCounts.today || !modeCounts.total) return;
   const n = (v) => Number(v || 0).toLocaleString("ko-KR");
   el.diffScreen.querySelectorAll("[data-count]").forEach((box) => {
     const m = box.dataset.count;
-    box.innerHTML = `<span>주간 도전 ${n(modeCounts.week[m])}</span>` +
-      `<span>월간 도전 ${n(modeCounts.month[m])}</span>`;
+    box.innerHTML = `<span>오늘 도전 ${n(modeCounts.today[m])}</span>` +
+      `<span>누적 도전 ${n(modeCounts.total[m])}</span>`;
   });
 }
 
 document.addEventListener("ping:stats", (e) => {
   const m = (e.detail || {}).mode;
-  if (!m || !m.week || !m.month) return;
+  if (!m || !m.today || !m.total) return;
   modeCounts = m;
   drawModeCounts();
   if (mode) drawModeCard();         // 푸는 중이면 위에 얹힌 칸까지 다시 그린다

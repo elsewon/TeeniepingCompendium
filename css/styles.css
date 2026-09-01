@@ -21,7 +21,22 @@
      (한때 66px/2 = 33px 을 줬는데, 그보다 높은 정답 행에서는 위아래가 곧은
      둥근 네모가 되어 캡슐이 아니었다.) */
   --radius-pill: 999px;
-  --font: "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+  /* 적어 둔 이름은 실제로 걸리는 것만 남긴다.
+     처음에는 "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", system-ui 였는데
+     한국 웹에서 흔히 쓰는 관용구를 그대로 옮겨 온 것이었고, 앞의 둘 중 하나와
+     "Noto Sans KR" 은 하는 일이 없었다.
+       · Pretendard  — 웹폰트로 싣지 않으니(@font-face 도 CDN 링크도 없다)
+                       직접 설치한 사람에게만 우연히 걸렸다
+       · Noto Sans KR — 구글 폰트의 웹폰트 이름이다. 안드로이드에 깔린 가족 이름은
+                       "Noto Sans CJK KR" 이라 이 이름으로는 맞지 않는다
+     안드로이드·윈도우용 한글 글꼴을 이름으로 적을 수도 있지만 그러지 않는다.
+     그 이름이 걸리면 한글뿐 아니라 숫자·라틴 글자까지 그 글꼴로 그려져,
+     기기가 본디 쓰는 글자꼴(Roboto·Segoe UI)보다 못해진다.
+     system-ui 에 맡기면 한글은 그 기기의 한글 글꼴로, 숫자·라틴은 그 기기의
+     본디 글자꼴로 각각 떨어진다 — 우리가 이름을 대는 것보다 낫다.
+     맨 앞의 Apple SD Gothic Neo 만 남기는 것은 이 도감을 주로 아이폰에서 보기 때문이고,
+     쉐브론 정렬(.back-link .chev)을 잰 글꼴도 그것이다. */
+  --font: "Apple SD Gothic Neo", system-ui, sans-serif;
 }
 
 * { box-sizing: border-box; }
@@ -279,7 +294,22 @@ a { color: inherit; text-decoration: none; }
 /* 세로 여백만 준다. padding 단축 속성을 쓰면 .wrap 의 좌우 여백까지 0 이 되어
    모바일에서 본문이 화면 가장자리에 붙는다. */
 .detail { padding-block: 26px 70px; }
-.back-link { display: inline-flex; align-items: center; gap: 6px; font-weight: 800; color: var(--ink-soft); margin-bottom: 18px; }
+/* line-height 를 1 로 내려 둔다. body 의 1.55 를 물려받으면 글자 칸이 1.55em 인데
+   쉐브론은 1em 이라, align-items: center 가 서로 다른 크기의 칸을 가운데 맞추면서
+   아이콘이 글자 획의 중심과 어긋난다. 둘 다 1em 이면 칸끼리는 딱 맞는다. */
+.back-link {
+  display: inline-flex; align-items: center; gap: 6px; line-height: 1;
+  font-weight: 800; color: var(--ink-soft); margin-bottom: 18px;
+}
+/* 칸을 맞춰도 아직 낮아 보인다. 한글 획의 시각 중심이 em 칸 중심보다 위에 있어서다.
+   Apple SD Gothic Neo Bold(font-weight 800 이 떨어지는 얼굴)에서 잰 값:
+     어센더 0.900em · 디센더 0.300em → 합 1.200em
+     '목록으로' 획: 밑선 위 0.789em ~ 밑선 아래 0.080em → 획 중심은 밑선 위 0.3545em
+     line-height 1 이면 줄상자 위에서 밑선이 0.800em 이므로 획 중심은 0.4455em,
+     상자 중심 0.5em 과 0.054em 어긋난다.
+   그래서 쉐브론을 그만큼 올린다. 자리 계산에 끼지 않는 transform 을 써서
+   글자 간격은 건드리지 않는다. */
+.back-link .chev { transform: translateY(-0.054em); }
 .back-link:hover { color: var(--pink); }
 .detail-top { display: grid; grid-template-columns: 320px 1fr; gap: 30px; align-items: start; }
 /* 목록 카드와 같은 짜임: 그림 위, 이름·태그 아래. 카드 테두리·그림자는
@@ -380,14 +410,20 @@ a.rel-item:hover { transform: translateY(-2px); border-color: var(--pink); box-s
 /* 난도 칸·문제 칸·인기 차트 행이 모두 430px 이다. 세 화면을 오갈 때 같은 폭이라
    내용만 바뀌고 틀은 그대로 있는 것처럼 보인다 (.difficulty-screen · .mode-bar · .rank-cols). */
 .quiz-stage {
+  /* 선택지와 정답 행이 같은 높이를 쓰도록 한 곳에 적어 둔다. 고르는 순간 선택지가
+     제자리에서 정답 행으로 갈아 끼워지므로, 높이가 다르면 칸이 그만큼 튄다.
+     정답 행 높이 = 그림 54 + 위아래 여백 10×2 + 테두리 1×2 = 76 */
+  --answer-h: 76px;
   max-width: 430px; margin: 0 auto; background: var(--card); border-radius: var(--radius);
   box-shadow: var(--shadow); border: 1px solid var(--line); padding: 26px; position: relative;
 }
 .quiz-image { border-radius: var(--radius-sm); overflow: hidden; margin-bottom: 18px; background: var(--pink-soft); }
 /* 원본 비율이 제각각이라 contain 으로 맞춘다 (없으면 정사각형으로 찌그러짐) */
 .quiz-image img, .quiz-image svg { width: 100%; display: block; aspect-ratio: 1/1; object-fit: contain; }
+/* 가려진 이름 칸. 누르면 제자리에서 정답 행으로 갈아 끼워지므로 높이를 맞춰 둔다
+   (선택지와 같은 --answer-h). 고정 높이를 쓰면 정답 행과 따로 놀아 칸이 튄다. */
 .name-slot {
-  height: 62px; border-radius: var(--radius-pill); border: 3px dashed var(--pink);
+  min-height: var(--answer-h); border-radius: var(--radius-pill); border: 3px dashed var(--pink);
   display: grid; place-items: center; cursor: pointer; user-select: none;
   font-weight: 800; font-size: 22px; color: var(--pink); transition: .2s;
   background: var(--pink-soft);
@@ -440,8 +476,10 @@ a.rel-item:hover { transform: translateY(-2px); border-color: var(--pink); box-s
    태그가 들어갈 폭이 52px 줄었고, 폰에서는 157마리 중 71마리가 두 줄로 접혔다.
    글이 길어 O/X 자리까지 닿으면 그 위에 겹쳐 그려진다 — 접히는 것보다 낫다. */
 .answer-row .mark {
-  position: absolute; right: 16px; top: 50%; transform: translateY(-50%);
-  font-size: 27px; font-weight: 900; line-height: 1;
+  /* 행 오른쪽 끝에서 조금 안으로 들여 세운다. 행이 알약 모양이라 오른쪽 끝은
+     둥글게 말려 있어, 여백에 딱 맞추면 O 가 그 곡선에 닿아 눌린 듯 보인다. */
+  position: absolute; right: 26px; top: 50%; transform: translateY(-50%);
+  font-size: 34px; font-weight: 900; line-height: 1;
 }
 /* 맞고 틀림은 O/X 만으로도 보이지만, 세 줄이 나란할 때 한눈에 갈리도록
    테두리와 바탕을 아주 옅게 물들인다 (차트 행의 짜임은 그대로 둔다). */
@@ -503,8 +541,11 @@ a.rel-item:hover { transform: translateY(-2px); border-color: var(--pink); box-s
    고르고 나면 셋 다 차트 항목(.answer-row)으로 갈아 끼워지므로,
    '고른 뒤' 모양은 여기 없고 위 정답 행 쪽에 있다. */
 .choice-btn { user-select: none; }
-/* 선택지 안쪽 읽어 주기 버튼. 칸 높이(58px)가 늘지 않게 이름 한 줄만큼만 쓴다. */
+/* 선택지 안쪽 읽어 주기 버튼. 이름 한 줄만큼만 쓴다 — 칸 높이는 아래 --answer-h 가 잡는다. */
 .choice-btn .speak-btn { --sz: 26px; }
+/* 정답 행과 같은 높이. 정답 행에도 같은 값을 걸어 두어 둘이 따로 놀지 않게 한다
+   (지금은 내용이 이미 그 높이라 정답 행 쪽은 사실상 확인용이다). */
+.choice-btn, .rank-row.answer-row { min-height: var(--answer-h); }
 
 .quiz-btns { display: flex; gap: 10px; justify-content: center; margin-top: 20px; }
 .btn {
@@ -512,9 +553,13 @@ a.rel-item:hover { transform: translateY(-2px); border-color: var(--pink); box-s
   border: none; cursor: pointer; font-family: inherit; transition: .16s;
 }
 .btn-primary { background: var(--pink); color: #fff; box-shadow: var(--shadow); }
-.btn-primary:hover { background: #ff5697; transform: translateY(-2px); }
+.btn-primary:hover:not(:disabled) { background: #ff5697; transform: translateY(-2px); }
 .btn-ghost { background: var(--card); color: var(--ink-soft); border: 2px solid var(--line); }
-.btn-ghost:hover { border-color: var(--purple); color: var(--purple); }
+.btn-ghost:hover:not(:disabled) { border-color: var(--purple); color: var(--purple); }
+/* 이름 맞추기의 「다음 티니핑」이 정답을 보기 전까지 잠겨 있다 (js/quiz.js).
+   순위 페이지 화살표(.rank-arrow:disabled)와 같은 표시를 쓴다 — 같은 뜻이면
+   같은 모양이어야 아이가 한 번 익힌 것을 다시 배우지 않는다. */
+.btn:disabled { opacity: .35; cursor: default; }
 
 /* 공유용 페이지(p/<id>.html) — 자바스크립트가 곧바로 상세로 보내므로
    보통은 눈에 띄지 않는다. 자동 이동이 막힌 경우를 위한 안내 화면. */
@@ -529,6 +574,17 @@ a.rel-item:hover { transform: translateY(-2px); border-color: var(--pink); box-s
 .rank-tabs { display: flex; justify-content: center; gap: 8px; margin: 14px 0 0; }
 .rank-nav { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 16px 0 14px; }
 .rank-range { color: var(--ink); font-size: 15px; font-weight: 800; min-width: 150px; }
+/* 이전·다음 표시. 화살표 글자(← →)는 글꼴마다 굵기와 길이가 제각각이라 두 버튼이
+   짝이 맞지 않아 보였다. 인라인 SVG 쉐브론은 currentColor 를 따라가고 획 굵기가
+   고정이라 어디서나 같은 모양이다 (읽어 주기·공유 아이콘과 같은 방식). */
+.chev { width: 1em; height: 1em; display: block; flex: 0 0 auto; }
+/* 글자와 나란히 놓일 때 (예: '다음 티니핑 ›').
+   여기는 flex 가 아니라 밑선(baseline) 기준이라 vertical-align 으로 맞춘다.
+   SVG 는 대체 요소라 아래 모서리가 밑선에 붙으므로 상자 가운데는 밑선에서
+   (vertical-align + 0.5em) 위에 놓인다. '다음 티니핑' 의 획 중심은 밑선 위 0.3665em
+   이니 vertical-align = 0.3665 - 0.5 = -0.133em 이다 (위와 같은 글꼴에서 잰 값). */
+.btn .chev { display: inline-block; vertical-align: -0.133em; margin-left: 6px; }
+
 .rank-arrow {
   width: 34px; height: 34px; display: grid; place-items: center;
   border: 2px solid var(--line); border-radius: 999px;
@@ -768,7 +824,7 @@ a.rel-item:hover { transform: translateY(-2px); border-color: var(--pink); box-s
   .diff-card .emoji { font-size: 26px; }
   .diff-card .t { font-size: 16px; }
   .diff-card .d { font-size: 12.5px; }
-  .name-slot { height: 56px; font-size: 19px; }
+  .name-slot { font-size: 19px; }   /* 높이는 --answer-h 가 잡는다 */
   .choice-btn { padding: 12px; font-size: 19px; }   /* 이름 칸과 같이 줄인다 */
   .answer-row .rank-name { font-size: 19px; }      /* 선택지와 같은 크기로 */
 }
@@ -794,8 +850,9 @@ a.rel-item:hover { transform: translateY(-2px); border-color: var(--pink); box-s
   .rank-row { padding: 10px 12px; }
   .rank-thumb { width: 46px; height: 46px; }
   .rank-body { margin-left: 6px; }
+  .quiz-stage { --answer-h: 68px; }     /* 그림 46 + 여백 10×2 + 테두리 1×2 */
   .answer-row { --thumb-lead: 52px; }   /* 그림 46 + 그림↔글 6 */
-  .answer-row .mark { right: 12px; }   /* 행 여백에 맞춘다 */
+  .answer-row .mark { right: 20px; }   /* 위와 같은 만큼 안으로 */
   .rank-no { width: 34px; --delta-h: 11px; }   /* 11 + 24 + 11 = 그림 높이(46) */
   .rank-no b { font-size: 24px; }
   .rank-name { font-size: 18px; }

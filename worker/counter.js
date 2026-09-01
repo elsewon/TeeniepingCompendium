@@ -19,8 +19,7 @@
  * 공유는 세지 않는다. 셀 수 있는 것이 사이트의 공유 버튼을 거친 것뿐이라 실제 공유의
  * 하한값인데 얼마나 모자란지도 알 길이 없었다 — 브라우저 자체 공유나 주소창 복사는
  * 사이트의 js 를 거치지 않는다. 통계 페이지와 인기 차트에서 차례로 뺐다.
- * 쌓여 있던 `:share` 열쇠는 지우지 않고 그대로 둔다 — 아무도 읽지 않으므로 없는 것과
- * 같고, 지우는 코드를 두면 그 값이 되돌릴 수 없이 사라진다.
+ * 쌓여 있던 `:share` 열쇠는 임시 코드로 한 번 지우고 그 코드는 뺐다.
  * 공유 버튼과 방문 경로(_share)는 그대로다.
  *
  * 좋아요는 개별 티니핑에만 있다. 방문과 달리 사람이 스스로 누르는 값이라
@@ -35,11 +34,19 @@
  *
  * 티니핑별은 기간 열쇠를 따로 쌓아 순위를 뽑는다.
  *   page:<id>:<kind>            누적
- *   d:<YYYY-MM-DD>:<id>:<kind>   오늘
  *   w:<그 주 월요일>:<id>:<kind>   주간
  *   m:<YYYY-MM>:<id>:<kind>      월간
  * 열쇠는 실제로 본 티니핑에만 생긴다 — 하루에 몇 마리를 봤느냐만큼만 늘어난다.
  * 순위를 뽑을 때 기간 접두어만 훑으면 되므로 한 번에 314 개(157 × 2)만 읽는다.
+ *
+ * 난도별 도전은 오늘치와 달치를 쌓는다.
+ *   mode:d:<YYYY-MM-DD>:<난도>   오늘
+ *   mode:m:<YYYY-MM>:<난도>      달
+ * 누적은 따로 쌓지 않고 달치를 모두 더해서 낸다. 누적 열쇠를 새로 만들면 그 값이
+ * 오늘부터 0 이 되지만, 달치는 이 기능이 생긴 날부터 쌓여 있어 더하면 지난 것이
+ * 그대로 살아난다. 달이 겹치지 않으니 합이 곧 누적이고, 한 달에 열쇠가 셋뿐이라
+ * 다 훑어도 싸다. 예전 주간 열쇠(mode:w:...)는 더 쓰지 않는다 — 주간·월간을
+ * 보여 주다 오늘·누적으로 바꿨다. 남은 값은 아무도 읽지 않으니 그대로 둔다.
  *
  * ── API ──────────────────────────────────────────
  *   POST /hit?type=visit&scope=list|quiz|rank|page[&page=<id>]
@@ -184,7 +191,7 @@ export class Counter {
       } else if (type === "mode") {
         const mode = url.searchParams.get("mode");
         if (MODES.includes(mode)) {
-          await this.bump(`mode:w:${week}:${mode}`);
+          await this.bump(`mode:d:${day}:${mode}`);
           await this.bump(`mode:m:${month}:${mode}`);
         }
       } else if (type === "like") {
@@ -207,7 +214,7 @@ export class Counter {
       }
     }
 
-    const stats = await this.read(day, week, month);
+    const stats = await this.read(day);
     stats.week = week;
     stats.month = month;
     if (page) stats.page = await this.readPage(page);
@@ -237,17 +244,29 @@ export class Counter {
     return Object.fromEntries(MODES.map((m, i) => [m, values[i]]));
   }
 
-  async read(day, week, month) {
+  /** 난도별 누적 도전수 — 달치를 모두 더한다 (위 열쇠 설명 참고) */
+  async modeTotals() {
+    const rows = await this.ctx.storage.list({ prefix: "mode:m:" });
+    const out = Object.fromEntries(MODES.map((m) => [m, 0]));
+    for (const [key, v] of rows) {
+      const m = key.slice(key.lastIndexOf(":") + 1);
+      if (m in out) out[m] += Number(v) || 0;
+    }
+    return out;
+  }
+
+  async read(day) {
     // SCOPES 를 그대로 돌려 만든다 — 영역을 늘려도 여기를 고칠 일이 없도록
     const scopes = await Promise.all(SCOPES.map((s) => this.readScope(s, day)));
-    const [modeWeek, modeMonth] = await Promise.all([
-      this.modeCounts(`mode:w:${week}:`),
-      this.modeCounts(`mode:m:${month}:`),
+    // 영역별 방문과 같은 짝(오늘·누적)으로 낸다
+    const [modeToday, modeTotal] = await Promise.all([
+      this.modeCounts(`mode:d:${day}:`),
+      this.modeTotals(),
     ]);
     return {
       date: day,
       ...Object.fromEntries(SCOPES.map((s, i) => [s, scopes[i]])),
-      mode: { week: modeWeek, month: modeMonth },
+      mode: { today: modeToday, total: modeTotal },
     };
   }
 
