@@ -1,4 +1,4 @@
-/* ===== 목록 페이지: 검색 + 기수/등급 필터 ===== */
+/* ===== 목록 페이지: 검색 + 기수/등급/좋아요 필터 ===== */
 /* 검색·필터 상태는 URL 에 담는다.
    그래야 개별 페이지에 다녀와도 목록이 그대로 유지되고, 링크 공유도 된다. */
 const params = new URLSearchParams(location.search);
@@ -6,6 +6,7 @@ const state = {
   q: params.get("q") || "",
   season: params.get("season") || null,
   grade: params.get("grade") || null,
+  liked: params.get("liked") === "1",
 };
 
 /* 현재 상태를 주소창에 반영 (뒤로가기 기록은 늘리지 않는다) */
@@ -14,6 +15,7 @@ function syncURL() {
   if (state.q) p.set("q", state.q);
   if (state.season) p.set("season", state.season);
   if (state.grade) p.set("grade", state.grade);
+  if (state.liked) p.set("liked", "1");
   const qs = p.toString();
   history.replaceState(null, "", qs ? "?" + qs : location.pathname);
 }
@@ -53,75 +55,129 @@ function syncChips() {
   document.querySelectorAll("[data-grade]").forEach((el) => {
     el.classList.toggle("active", el.dataset.grade === state.grade);
   });
+  document.querySelectorAll("[data-liked]").forEach((el) => {
+    el.classList.toggle("active", state.liked);
+  });
 }
 
-/* 검색 대상 — 한 글자면 이름·감정만, 두 글자부터는 마법 설명과 에피소드까지 뒤진다.
+/* 좋아요 칩은 기수·등급과 달리 데이터에서 만들지 않는다 (값이 하나뿐이라
+   index.html 에 그대로 적혀 있다). 눌리면 켜고 끈다. */
+document.addEventListener("click", (e) => {
+  const el = e.target.closest("[data-liked]");
+  if (!el) return;
+  state.liked = !state.liked;
+  syncChips(); render();
+});
+
+/* 검색 대상과 우선순위 — 이름 → 감정 → 소개 → 마법.
  *
- * 한 글자에 긴 글까지 넣으면 거의 다 걸린다. "핑" 하나로 157마리가 그대로 남는 식이라
- * 걸러 주는 것이 없다. 두 글자부터는 "눈물", "타르트" 처럼 이야기 속 낱말로 찾을 수 있다.
+ * 앞에 적은 밭에서 걸린 것이 앞에 선다. "하츄핑"으로 찾으면 하츄핑이 먼저 나오고,
+ * 남의 소개나 마법 글에 그 이름이 나오는 마리가 뒤따른다.
  *
- * 뒤질 글이 5만 자가 넘으므로(157마리 × 수백 자) 한 번 만든 것은 캐시해 둔다 —
- * 글자를 칠 때마다 다시 이어 붙이고 소문자로 바꾸면 그만큼을 매번 훑게 된다. */
-function haystack(t, deep) {
-  const key = deep ? "_hayDeep" : "_hay";
-  if (t[key] === undefined) {
-    const parts = deep
-      ? [t.nameKo, t.emotion, t.magic, t.episode, t.story]
-      : [t.nameKo, t.emotion];
-    t[key] = parts.filter(Boolean).join(" ").toLowerCase();
-  }
-  return t[key];
+ * 감정이 이름 바로 다음이다. 「사랑」·「올바름」처럼 낱말 하나라 스치듯 걸리는 일이
+ * 없고, 그 마리를 한마디로 이르는 말이라 이름에 버금간다. 뒤에 두었더니 「사랑」으로
+ * 찾을 때 감정이 곧 '사랑'인 하츄핑이, 소개에 그 말이 스친 마리들 뒤로 밀렸다.
+ *
+ * 에피소드 제목과 줄거리는 뒤지지 않는다. 줄거리는 마리당 수백 자라 아무 낱말이나
+ * 걸린다 — "하츄핑" 하나로 41마리가 나왔고, 그중 35마리는 남의 줄거리에 이름이
+ * 스쳤을 뿐이었다.
+ *
+ * 한 글자로 찾을 때는 짧은 밭(이름·감정)만 본다. 긴 글까지 넣으면 "핑" 하나로
+ * 157마리가 그대로 남아 걸러 주는 것이 없다. 두 글자부터 소개와 마법도 뒤져
+ * "눈물", "타르트" 처럼 이야기 속 낱말로 찾을 수 있다. */
+const SEARCH = [
+  { key: "nameKo", short: true },
+  { key: "emotion", short: true },
+  { key: "intro" },
+  { key: "magic" },
+];
+
+/* 소문자로 바꾼 값을 밭마다 캐시해 둔다 — 글자를 칠 때마다 157마리 × 4밭을
+   다시 소문자로 바꾸면 그만큼을 매번 훑게 된다. */
+function field(t, key) {
+  const c = "_lc_" + key;
+  if (t[c] === undefined) t[c] = String(t[key] || "").toLowerCase();
+  return t[c];
 }
+
+/* 몇 번째 밭에서 걸렸나. 어디에도 안 걸리면 -1 */
+function hitRank(t, q) {
+  const deep = q.length >= 2;
+  for (let i = 0; i < SEARCH.length; i++) {
+    if (!deep && !SEARCH[i].short) continue;
+    if (field(t, SEARCH[i].key).includes(q)) return i;
+  }
+  return -1;
+}
+
+const LIKE_PREFIX = "ping-liked-";
+
+/* 이 기기에서 좋아요를 누른 id 들. 개별 페이지가 localStorage 에 남긴다
+   (js/page.js 의 'ping-liked-<id>'). 서버에 묻지 않으므로 기기마다 다르다. */
+function likedIds() {
+  const out = new Set();
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(LIKE_PREFIX) && localStorage.getItem(k) === "1") {
+        out.add(k.slice(LIKE_PREFIX.length));
+      }
+    }
+  } catch { /* 사파리 비공개 모드 등에서 막히면 빈 채로 둔다 */ }
+  return out;
+}
+let liked = likedIds();
 
 function matches(t) {
   if (state.season && t.season !== state.season) return false;
   if (state.grade && t.grade !== state.grade) return false;
-  if (state.q) {
-    const q = state.q.toLowerCase();
-    if (!haystack(t, q.length >= 2).includes(q)) return false;
-  }
+  if (state.liked && !liked.has(t.id)) return false;
+  if (state.q && hitRank(t, state.q.toLowerCase()) < 0) return false;
   return true;
 }
 
 function cardHTML(t) {
   const gradeClass = ["로열", "레전드", "빌런"].includes(t.grade) ? "grade-" + t.grade : "";
   const back = location.search ? "?from=" + encodeURIComponent(location.search) : "";
-  return `<a class="card" href="${pingHref(t.id)}${back}">
+  // 카드 자체가 <a> 였을 때는 이름 옆에 읽어 주기 버튼을 둘 수 없었다 (링크 안의
+  // 버튼). 인기 차트의 행처럼 카드를 <div> 로 두고 투명한 링크를 위에 겹쳐 깐다.
+  return `<div class="card">
+    <a class="card-hit" href="${pingHref(t.id)}${back}" aria-label="${t.nameKo} 자세히 보기"></a>
     <div class="thumb">${imageMarkup(t, 260)}</div>
     <div class="body">
-      <div class="name">${t.nameKo}</div>
+      <div class="name-row">
+        <div class="name">${t.nameKo}</div>
+        ${speakBtnHTML(t.nameKo)}
+      </div>
       <div class="tags">
         <span class="tag season">${t.season}</span>
         <span class="tag ${gradeClass}">${t.grade}</span>
         ${t.gender ? `<span class="tag gender-${t.gender}">${t.gender}</span>` : ""}
       </div>
     </div>
-  </a>`;
+  </div>`;
 }
 
 function render() {
   syncURL();
+  liked = likedIds();          // 개별 페이지에 다녀오는 사이에 늘었을 수 있다
   const list = getAll().filter(matches);
 
-  /* 이름에 걸린 것을 앞에 놓는다. 긴 글까지 뒤지면 "하츄핑" 하나로 41마리가 나오는데
-     (남의 줄거리에 그 이름이 나오는 마리까지 딸려 온다) 정작 찾던 하츄핑이 뒤로
-     밀리면 안 된다. 뒤에 오는 것들도 버리지 않는다 — 그 이야기에 나온다는 것 자체가
-     알 만한 일이라, 이름으로 찾다가 딸려 오는 것이 오히려 재미다.
-     sort 는 같은 값끼리 차례를 흩뜨리지 않으므로 각 무리 안의 순서는 그대로다. */
-  if (state.q.length >= 2) {
+  /* 걸린 밭이 앞선 것을 앞에 놓는다. sort 는 같은 값끼리 차례를 흩뜨리지 않으므로
+     각 무리 안의 순서는 데이터 그대로다. */
+  if (state.q) {
     const q = state.q.toLowerCase();
-    const rank = (t) => (haystack(t, false).includes(q) ? 0 : 1);
-    list.sort((a, b) => rank(a) - rank(b));
+    const r = new Map(list.map((t) => [t, hitRank(t, q)]));
+    list.sort((a, b) => r.get(a) - r.get(b));
   }
 
   const grid = document.getElementById("grid");
-  document.getElementById("count").textContent = `${list.length}마리`;
   grid.innerHTML = list.length
     ? list.map(cardHTML).join("")
-    : "";
-  if (!list.length) {
-    grid.innerHTML = `<div class="empty" style="grid-column:1/-1">조건에 맞는 티니핑이 없어요 🥲</div>`;
-  }
+    : `<div class="empty" style="grid-column:1/-1">${
+        state.liked && !liked.size
+          ? "아직 좋아요를 누른 티니핑이 없어요 ❤️"
+          : "조건에 맞는 티니핑이 없어요 🥲"}</div>`;
 }
 
 const searchEl = document.getElementById("search");
@@ -192,6 +248,9 @@ function sayKey(text) {
 
 /* 열쇠 → 이름. 두 이름이 같은 열쇠를 가지면(아야핑 / 아아핑) 아무것도 고르지 않고
    null 을 넣어 둔다 — 어느 쪽인지 모르는데 하나를 골라 주면 엉뚱한 것을 찾게 된다. */
+/* 이름인지 곧바로 가리려고 따로 담아 둔다 (말해서 찾기의 후보 고르기에 쓴다) */
+const NAMES = new Set(getAll().map((t) => t.nameKo));
+
 const NAME_BY_KEY = (() => {
   const m = new Map();
   for (const t of getAll()) {
@@ -222,7 +281,51 @@ function fixHeard(text) {
     }
     if (only) return only;
   }
+
+  /* 가운데가 빠졌을 때 되살린다. 아이패드에서 "다이아 하츄핑" 이 "다이아 츄" 로
+     들어왔는데, '하' 한 음절이 통째로 빠져 앞머리 맞추기로는 살릴 수 없다.
+     들은 열쇠의 낱자가 이름 열쇠에 **차례대로** 들어 있으면(부분열) 같은 이름으로 본다.
+
+     이것만으로는 너무 헐거워 「딸기→달콤핑」·「여유→여우핑」까지 바꿔 버린다.
+     그래서 둘을 더 건다 — 들은 말이 세 음절 이상이고, 이름이 그보다 두 음절 넘게
+     길지 않을 것. 이러면 「딸기」·「공주」·「프린세스」·「타르트」는 그대로 두고
+     감정 84개 가운데 이름으로 바뀌는 것이 하나도 없다. */
+  /* 들은 말이 이미 이름의 소리를 갖췄으면 손대지 않는다. NAME_BY_KEY 에 열쇠가
+     있다는 것은 그 이름이거나, 아야핑/아아핑처럼 소리가 겹쳐 고르지 않기로 한
+     짝이라는 뜻이다. 이때까지 부분열로 넘기면 「아야핑」이 「얌얌핑」이 된다. */
+  const heard = syllables(text);
+  if (heard >= 3 && !NAME_BY_KEY.has(key)) {
+    let only = null;
+    for (const [k, name] of NAME_BY_KEY) {
+      if (!name) continue;
+      const len = syllables(name);
+      if (len < heard || len - heard > 2 || !subseq(key, k)) continue;
+      if (only) return text;              // 둘 이상이면 고르지 않는다
+      only = name;
+    }
+    if (only) return only;
+  }
   return text;
+}
+
+/* 한글 낱자만 센다 (사이 띄어쓰기·기호는 뺀다) */
+function syllables(text) {
+  let n = 0;
+  for (const ch of String(text)) {
+    const c = ch.charCodeAt(0) - 0xac00;
+    if (c >= 0 && c <= 11171) n++;
+  }
+  return n;
+}
+
+/* a 의 글자가 b 안에 차례대로 다 나오나 */
+function subseq(a, b) {
+  let i = 0;
+  for (const c of b) {
+    if (c === a[i]) i++;
+    if (i === a.length) return true;
+  }
+  return false;
 }
 
 /* ===== 말해서 찾기 =====
@@ -261,14 +364,28 @@ if (!Recognition) {
     rec.lang = "ko-KR";
     rec.interimResults = true;
     rec.continuous = false;
-    rec.maxAlternatives = 1;
+    /* 인식기가 내놓는 후보를 셋까지 받는다. 티니핑 이름은 사전에 없는 말이라
+       첫 후보가 자주 어긋나는데, 뒤 후보가 이름으로 곧장 풀리는 일이 잦다.
+       후보를 안 주는 브라우저에서는 하나만 오므로 예전과 똑같이 움직인다. */
+    rec.maxAlternatives = 3;
 
     rec.onresult = (e) => {
-      // 중간 결과까지 이어 붙인다 — 말하는 대로 검색창이 따라 찬다
-      let text = "";
-      for (const r of e.results) text += r[0].transcript;
-      // 인식기는 문장 끝에 마침표를 붙이곤 한다. 검색어에는 군더더기다.
-      setQuery(fixHeard(text.replace(/[.。]\s*$/, "").trim()));
+      /* 중간 결과까지 이어 붙인다 — 말하는 대로 검색창이 따라 찬다.
+         앞선 결과는 이미 굳은 것이라 첫 후보만 쓰고, 마지막 결과에서만 후보를
+         견준다. 이름으로 딱 떨어지는 후보가 있으면 그것을 쓰고, 없으면 첫 후보를
+         고쳐서 쓴다. 인식기는 문장 끝에 마침표를 붙이곤 하는데 검색어에는 군더더기다. */
+      let head = "";
+      for (let i = 0; i < e.results.length - 1; i++) head += e.results[i][0].transcript;
+      const last = e.results[e.results.length - 1];
+      const clean = (s) => fixHeard(String(s).replace(/[.。]\s*$/, "").trim());
+
+      let first = null;
+      for (let i = 0; i < last.length; i++) {
+        const guess = clean(head + last[i].transcript);
+        if (first === null) first = guess;
+        if (NAMES.has(guess)) { first = guess; break; }
+      }
+      setQuery(first || "");
     };
     rec.onerror = (e) => {
       if (e.error === "not-allowed" || e.error === "service-not-allowed") {

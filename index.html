@@ -48,7 +48,7 @@
     <div class="wrap">
       <section class="controls">
         <div class="search-box">
-          <input id="search" type="text" placeholder="이름·마법·에피소드 검색" autocomplete="off">
+          <input id="search" type="text" placeholder="이름·감정·소개·마법" autocomplete="off">
           <button class="clear-btn" id="clearSearch" type="button" aria-label="검색어 지우기" hidden>×</button>
           <!-- 말해서 찾기. 음성 인식이 없는 브라우저에서는 js/list.js 가 감춘다 -->
           <button class="mic-btn" id="micSearch" type="button" aria-label="말해서 찾기" title="말해서 찾기">
@@ -60,14 +60,19 @@
             </svg>
           </button>
         </div>
-        <div class="filter-group" id="seasonFilters">
-          <span class="filter-label">기수</span>
-        </div>
-        <div class="filter-group" id="gradeFilters">
-          <span class="filter-label">등급</span>
+        <!-- 세 무리를 한 상자에 담아 자리가 남으면 같은 줄에 붙게 한다.
+             이름표(기수·등급)는 두지 않는다 — 칩 글자가 이미 「1기 감정」·「로열」이라
+             무엇을 고르는 자리인지 그 자체로 읽힌다. 무리는 사이 여백으로 갈린다. -->
+        <div class="filters">
+          <div class="filter-group" id="seasonFilters"></div>
+          <div class="filter-group" id="gradeFilters"></div>
+          <!-- 좋아요는 기수·등급과 달리 값이 하나뿐이라 여기 그대로 적는다.
+               이 기기에서 누른 것만 걸러 준다 (js/list.js) -->
+          <div class="filter-group" id="likeFilters">
+            <button class="chip" type="button" data-liked><span class="chip-heart" aria-hidden="true">❤️</span>좋아요</button>
+          </div>
         </div>
       </section>
-      <p class="result-count" id="count"></p>
     </div>
   </div>
 

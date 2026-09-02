@@ -252,10 +252,10 @@ function speakBtnHTML(name, cls) {
     ` aria-label="${n} 이름 듣기" title="이름 듣기">${SPEAK_ICON}</button>`;
 }
 
-/* 글 덩어리(마법 설명·에피소드 줄거리)를 읽어 주는 버튼. 문단 맨 끝에 들어간다.
+/* 글 덩어리(마법 설명·에피소드 줄거리)를 읽어 주는 버튼. 칸 제목 옆에 들어간다.
    글을 data-speak 에 옮겨 적지 않는다 — 설명은 수백 자라 그대로 베끼면 페이지가
    그만큼 무거워진다(157장을 미리 만들어 두므로 더 그렇다). 값 없는 data-speak 로
-   표시만 해 두고, 누를 때 감싸고 있는 문단의 글을 읽는다. */
+   표시만 해 두고, 누를 때 감싸고 있는 칸의 글을 읽는다. */
 function speakBlockBtnHTML(label) {
   const l = String(label || "읽어 주기")
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -393,10 +393,15 @@ document.addEventListener("click", (e) => {
   // 이 처리기는 document 에 달려 있어, 여기 닿았을 때는 중간 요소의 처리기가
   // 이미 지나간 뒤다. 안쪽에 든 버튼이 바깥을 누른 것처럼 보이는 일은
   // 감싼 쪽에서 막는다 (js/quiz.js 의 [data-speak] 확인).
-  // 값이 없는 data-speak 는 "나를 감싼 문단을 읽어라"는 뜻이다.
-  // 버튼 안에는 그림(svg)뿐이라 문단 글에 군더더기가 섞이지 않는다.
-  const text = btn.dataset.speak ||
-    (btn.parentElement ? btn.parentElement.textContent.trim() : "");
+  /* 값이 없는 data-speak 는 "나를 감싼 칸을 읽어라"는 뜻이다.
+     칸(.info-block) 안의 문단을 모두 이어 읽는다 — 에피소드가 여러 회차로 나뉘어도
+     버튼 하나로 처음부터 끝까지 들려준다. 제목(h3)은 빼고 문단만 읽는다.
+     칸을 못 찾으면 예전처럼 감싼 요소의 글을 읽는다. */
+  const box = btn.closest(".info-block");
+  const ps = box ? [...box.querySelectorAll("p")] : [];
+  const text = btn.dataset.speak
+    || (ps.length ? ps.map((el) => el.textContent.trim()).filter(Boolean).join(" ")
+                  : (btn.parentElement ? btn.parentElement.textContent.trim() : ""));
   speakText(text, btn);
 });
 

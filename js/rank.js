@@ -5,6 +5,10 @@
  * 기간은 주·월 둘이고 달력 기준이다 — 주는 월요일 시작, 월은 1일 시작(모두 한국 시각).
  * 일간은 두지 않는다. 하루치는 표본이 너무 적어 한두 번의 조회로 순위가 뒤집힌다.
  * 이전/다음 기간은 여기서 날짜를 계산해 at 으로 넘긴다.
+ *
+ * 첫 화면은 집계가 끝난 직전 기간을 연다. 이번 기간은 아직 차오르는 중이라
+ * 순위가 하루에도 뒤집히고, 다 채워진 쪽이 견주어 볼 것이 많다. 이번 기간에는
+ * 다음(›) 한 번으로 가고, 그때는 기간 이름 옆에 (집계중) 이 붙는다.
  */
 const RANK_API = "https://teenieping-counter.elsewon.workers.dev";
 
@@ -39,6 +43,20 @@ function shift(period, at, step) {
   }
   return iso(new Date(day(at).getTime() + step * 7 * 86400000));
 }
+
+/* 지금이 어느 기간인지. worker/counter.js 의 seoulParts 와 같은 셈을 여기서도 한다 —
+   첫 화면을 직전 기간으로 열려면 응답을 받기 전에 알아야 하기 때문이다.
+   한국 시각으로 옮긴 뒤 UTC 달력을 읽으므로 보는 기기의 시간대와 상관없다. */
+function seoulNow(period) {
+  const d = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  if (period === "month") return d.toISOString().slice(0, 7);
+  const dow = (d.getUTCDay() + 6) % 7;                       // 월=0 … 일=6
+  return new Date(d.getTime() - dow * 86400000).toISOString().slice(0, 10);
+}
+
+/* 첫 화면에 열 기간 — 집계가 끝난 직전 것. 기기 시계가 어긋나 엉뚱한 기간을 물어도
+   (집계중) 표시는 응답의 now 로 가리므로 표시까지 함께 틀리지는 않는다. */
+const defaultAt = (period) => shift(period, seoulNow(period), -1);
 
 /* ISO 8601 주 번호. 그 주의 목요일이 속한 해가 그 주의 연도다 —
    그래서 2024-12-30 월요일은 "2025년 1주", 2026-12-28 은 "2026년 53주" 가 된다. */
@@ -119,10 +137,13 @@ function render(data) {
   }
   state.at = data.at;
   state.now = data.now;
-  el.range.textContent = rangeLabel(data.period, data.at);
 
   // 아직 오지 않은 기간으로는 갈 수 없다
   const now = data.period === "month" ? data.now.month : data.now.week;
+  // 이번 기간은 숫자가 아직 차오르는 중이라 순위가 굳지 않았다 — 기간 이름 옆에 그렇게 적는다.
+  // at 과 now 모두 서버가 준 값이라 보는 기기의 시계와 어긋나도 이 표시는 틀리지 않는다.
+  el.range.innerHTML = rangeLabel(data.period, data.at)
+    + (data.at === now ? ` <em class="rank-live">(집계중)</em>` : "");
   el.next.disabled = data.at >= now;
 
   SORTS.forEach(({ key, label }) => fill(el[key], data[key], key, label));
@@ -151,7 +172,7 @@ el.periodTabs.addEventListener("click", (e) => {
   const btn = e.target.closest("[data-period]");
   if (!btn) return;
   pickTab(el.periodTabs, btn, "period");
-  state.at = null;            // 기간 단위가 바뀌면 이번 기간부터 다시
+  state.at = defaultAt(state.period);   // 기간 단위가 바뀌면 다시 직전 기간부터
   load();
 });
 
@@ -165,4 +186,5 @@ el.next.addEventListener("click", () => {
   load();
 });
 
+state.at = defaultAt(state.period);
 load();

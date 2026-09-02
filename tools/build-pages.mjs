@@ -69,9 +69,7 @@ const FOOTER = section("footer").replace(/\s*<p class="stats"[\s\S]*?<\/p>/, "")
  * 이름과 관계 라벨은 그대로 남으므로 여기서는 대체 그림을 두지 않는다. */
 function relationsHTML(center) {
   const rels = center.relations || [];
-  if (!rels.length) {
-    return `<p><span class="pending">아직 등록된 관계가 없어요 🌱</span></p>`;
-  }
+  if (!rels.length) return "";
   const items = rels.map((rel) => {
     const target = BY_ID[rel.id];
     const name = target ? target.nameKo : rel.id;
@@ -115,12 +113,130 @@ function description(t) {
   return out.length > LIMIT + 20 ? out.slice(0, LIMIT).trim() + "…" : out;
 }
 
+/* 소품을 마법 설명에 녹인다.
+ *
+ * 153마리 가운데 **73마리는 마법 글이 이미 소품을 말하고 있다** (차차핑: "…물뿌리개를
+ * 불러내 마법의 물을 뿌리기도 한다"). 거기에 소품을 또 적으면 같은 말을 두 번 한다.
+ * 그래서 **글에 없는 마리에만** 손을 댄다.
+ *
+ * 딴 문장으로 붙이지 않고 **첫 문장 안에 넣는다.** 「마법 도구는 돋보기다. 호기심의
+ * 마법으로 궁금한 것을 부풀린다」보다 「돋보기로 호기심의 마법을 써서 궁금한 것을
+ * 부풀린다」가 한 문장으로 읽혀 자연스럽다.
+ *
+ * 첫 문장 모양이 셋이라 각각 다르게 넣는다.
+ *   ① 「…마법으로 ~한다」   → 「소품으로 …마법을 써서 ~한다」
+ *                            (키키핑: 막대사탕으로 장난기의 마법을 써서 주변을…)
+ *   ② 「…마법을 쓴다/쓰는」   → 앞에 「소품으로」만 붙인다
+ *                            (하츄핑: 손거울로 사랑의 마법을 쓰는 1기의 대표…)
+ *   ③ 그 밖                  → 넣을 자리가 없다. 딴 문장으로 앞에 세운다
+ *                            (그림핑: 마법 도구는 물감 붓이다. 마법 붓으로 그린…)
+ * ③ 으로 억지로 밀어 넣으면 말이 어그러지므로 되는 것만 넣는다.
+ *
+ * 소품의 낱말이 글에 이미 있으면 손대지 않는데(같은 말을 두 번 하지 않으려고),
+ * **뜻이 다른데 글자만 같은 경우**가 셋 있다. 아래 APART 에 적어 두고 ③ 으로 보낸다 —
+ * 소품이 글에 없으니 밝혀 주어야 하고, 문장 안에 끼워 넣으면 같은 낱말이 한 문장에
+ * 두 번 들어가 눈에 걸린다.
+ *
+ * ①의 자리는 '마법' 바로 뒤가 '으로' 일 때만 잡는다. 그림핑의 「마법 붓으로」처럼
+ * 사이에 말이 끼면 걸리지 않아야 한다.
+ *
+ * 그리고 '마법' 이 문장 앞머리에 있을 때만 잡는다. 차밍핑은 「자기만의 기준으로
+ * 매력지수를 매기고 바리깡 마법으로 머리 모양을 바꿔 버린다」인데, 뒤쪽 '마법으로'
+ * 를 잡아 맨 앞에 소품을 붙이면 「핸드백으로 자기만의 기준으로…」가 되어
+ * '으로' 가 겹치고 말이 엉킨다. 앞이 스무 자를 넘거나 거기 이미 '(으)로' 가 있으면
+ * 손대지 않고 ③ 으로 보낸다.
+ *
+ * 조사는 받침을 따른다 — 없거나 ㄹ 이면 '로', 아니면 '으로' (손거울로·카메라로·
+ * 막대사탕으로). '이에요/예요' 도 마찬가지다 (마법책이에요·카메라예요).
+ * 괄호로 닫히는 소품이 있을 수 있어 끝 글자가 아니라 **마지막 한글 낱자**를 본다. */
+/* 거꾸로, **글이 소품을 다른 말로 이미 부르고 있는** 마리들. 글자가 안 맞아 못 알아보지만
+   같은 물건이므로 아무것도 보태지 않는다 (조아핑에 「마법 도구는 브러쉬다」를 붙이면
+   바로 뒤 「마법 붓으로」와 같은 말이 된다). 띄어쓰기만 다르거나(깃털부채/깃털 부채),
+   한 글자라 낱말로 안 잡히거나(큰북→북), 아예 딴 말인 경우(스패츌러→주걱)가 섞여 있다. */
+const SAID = new Set([
+  "조아핑",    // 브러쉬        → 글은 「마법 붓으로」
+  "그림핑",    // 물감 붓        → 글은 「마법 붓으로」
+  "까르핑",    // 깃털부채       → 글은 「마법 깃털 부채로」 (띄어쓰기)
+  "발레핑",    // 스노우볼       → 글은 「마법 스노볼로」
+  "샌드핑",    // 스패츌러       → 글은 「마법 주걱으로」
+  "요거핑",    // 나무스푼·요거트양 → 글은 「마법 숟가락과 … 요거트 양들로」
+  "다롱핑",    // 큰북          → 글은 「북을 두드려」
+  "루루핑",    // 통기타         → 글은 「기타와 노래로」
+  "차캐핑",    // 차캐핑의 얼굴도장 → 글은 「도장을 찍어」
+  "말랑핑",    // 줄 달린 탱탱볼   → 글은 「젤리볼을 던져」
+]);
+
+const APART = new Set([
+  "솔찌핑",    // 소품은 「구름 솜사탕」인데 글의 '구름' 은 하늘의 구름이다
+  "캔디핑",    // 소품은 「사탕 바구니」인데 글의 '사탕' 은 '사탕발림' 이다
+  "푸딩핑",    // 소품은 「푸딩 모양의 텀블러」인데 글의 '푸딩' 은 '푸딩 댄스' 다
+]);
+
+function withItem(item, magic, name) {
+  const it = String(item || "").replace(/\n/g, " ").trim();
+  const text = String(magic || "").trim();
+  if (!it || it === "없음") return text;
+
+  if (SAID.has(name)) return text;          // 글이 이미 다른 말로 부르고 있다
+  const apart = APART.has(name);
+
+  // 소품의 낱말이 이미 글에 있으면 그대로 둔다
+  const words = it.replace(/\(.*?\)/g, " ").split(/[,·과와및\s]+/).filter((w) => w.length >= 2);
+  if (!apart && words.some((w) => text.includes(w))) return text;
+
+  const syl = [...it].reverse().find((ch) => {
+    const c = ch.charCodeAt(0) - 0xac00;
+    return c >= 0 && c <= 11171;
+  });
+  const jong = syl ? (syl.charCodeAt(0) - 0xac00) % 28 : -1;
+  const ro = (jong === 0 || jong === 8) ? "로" : "으로";       // 8 = 받침 ㄹ
+  const ida = jong === 0 ? "예요" : "이에요";
+
+  /* 앞머리가 짧고 거기에 '(으)로' 가 없을 때만 문장 안에 넣는다 */
+  const head = (re) => {
+    const m = re.exec(text);
+    return m && m[1].length <= 20 && !/[으]?로\s/.test(m[1]) ? m : null;
+  };
+
+  const one = apart ? null : head(/^([^.!?]*?마법)으로\s/);      // ①
+  if (one) return text.replace(one[0], `${it}${ro} ${one[1]}을 써서 `);
+
+  /* '쓴다'·'써요' 도 받는다. 한글은 '쓰' 에 ㄴ 을 얹어도 '쓴' 이라는 딴 낱자가 되고
+     '써' 도 마찬가지라, '쓰' 로만 찾으면 둘 다 걸리지 않는다. */
+  if (!apart && head(/^([^.!?]*?)마법을 [쓰쓴써]/)) return `${it}${ro} ${text}`;   // ②
+  const line = `마법 도구는 ${it}${ida}.`;                      // ③
+  return text ? `${line} ${text}` : line;
+}
+
 function page(t) {
   const title = `티니핑 도감 - ${t.nameKo}`;
   const desc = description(t);
   const url = `${BASE}/p/${encodeURIComponent(t.id)}.html`;
   const gradeClass = ["로열", "레전드", "빌런"].includes(t.grade) ? "grade-" + t.grade : "";
-  const pending = '<span class="pending">아직 정보가 준비되지 않았어요 🌱</span>';
+
+  /* 내용이 없는 칸은 블록째 내보내지 않는다. 「아직 정보가 준비되지 않았어요 🌱」가
+     118장에 떠 있었는데, 대부분은 앞으로도 채워질 것이 아니라 원작에 없는 것이다
+     (관계가 그렇다 — 39마리만 짝이 있다). 없는 것을 없다고 알리느니 자리를 비운다.
+     마법 칸은 소품이 함께 들어가므로 둘을 합친 뒤에 비었는지 본다 —
+     샤를핑은 마법 서술문이 없지만 소품(장난감 칼)은 있어 그 한 줄이 남는다. */
+  const magicText = withItem(t.item, t.magic, t.nameKo);
+  /* 회차는 제목 옆 배지가 아니라 줄거리 첫머리에 놓는다 — 소품을 마법 설명 안에
+     넣은 것과 같은 결이다. 배지로 떠 있으면 눈이 한 번 더 옮겨 가야 하고, 읽어 주기
+     버튼이 문단만 읽어 회차를 빠뜨린다. 값이 이미 「1기 15화 「돌아와, 하츄핑」」처럼
+     온전한 이름이라 덧붙이는 말 없이 마침표만 찍어 세운다.
+     여러 회차에 걸쳐 나오는 마리는 회차마다 문단을 나눈다 — 읽어 주기도 따로 붙어
+     궁금한 화만 골라 들을 수 있다.
+
+     회차 이름 뒤에서 줄을 넘긴다. <br> 뒤에 진짜 줄바꿈을 하나 더 두는 것은 읽어
+     주기 때문이다 — 그 버튼은 감싼 문단의 textContent 를 읽는데(js/util.js), <br> 은
+     글자를 남기지 않아 「…하츄핑」.로미가」처럼 두 줄이 붙어 읽힌다. */
+  const storyHTML = (t.episodes || [])
+    .map((e) => `<p>${e.episode ? `${esc(e.episode)}.<br>\n            ` : ""}${esc(e.plot)}</p>`)
+    .join("\n          ");
+  const relations = relationsHTML(t);
+  const block = (title, body) => (body
+    ? `<div class="info-block">\n          <h3>${title}</h3>\n          ${body}\n        </div>`
+    : "");
 
   return `<!doctype html>
 <html lang="ko">
@@ -179,19 +295,12 @@ ${HEADER}
         </button>
       </div>
       <div class="detail-info">
-        <div class="info-block">
-          <h3>🪄 마법</h3>
-          <!-- 글 끝의 읽어 주기 버튼은 문단 안에 넣는다 — 누르면 감싼 문단의 글을 읽는다 -->
-          <p>${t.magic ? esc(t.magic) + speakBlockBtnHTML("마법 설명 읽어 주기") : pending}</p>
-        </div>
-        <div class="info-block">
-          <h3>📖 에피소드 ${t.episode ? `<span class="ep-badge">${esc(t.episode)}</span>` : ""}</h3>
-          <p>${t.story ? esc(t.story) + speakBlockBtnHTML("에피소드 줄거리 읽어 주기") : pending}</p>
-        </div>
-        <div class="info-block">
-          <h3>🔗 관계</h3>
-          ${relationsHTML(t)}
-        </div>
+        ${block(`💬 소개${speakBlockBtnHTML("소개 읽어 주기")}`, t.intro
+          ? `<p>${esc(t.intro).replace(/\n/g, "<br>\n            ")}</p>` : "")}
+        ${block(`🪄 마법${speakBlockBtnHTML("마법 설명 읽어 주기")}`, magicText
+          ? `<p>${esc(magicText)}</p>` : "")}
+        ${block(`📖 에피소드${speakBlockBtnHTML("에피소드 줄거리 읽어 주기")}`, storyHTML)}
+        ${block("🔗 관계", relations)}
       </div>
     </div>
   </main>

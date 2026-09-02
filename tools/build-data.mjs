@@ -4,6 +4,7 @@
  *   roster.js  (PDF 도감 시즌1~6 전체 명단 + 등급)   ← 권위 있는 명단
  * + details.js (위키 리서치 상세: 특징/사연/관계/영문명) ← 있으면 병합
  * + magic.js   (개별 페이지에 보여 줄 마법 설명)          ← 있으면 병합
+ * + profile.json (나무위키·블로그·카페에서 모은 한 줄 소개/소품)   ← 있으면 병합
  * → data/teeniepings.js
  *
  * 실행: node tools/build-data.mjs
@@ -26,11 +27,71 @@ const DETAILS = loadWindowFile("tools/details.js").DETAILS;
 /* 마법 설명 (tools/magic.js) — 이름(nameKo)으로 병합한다 */
 const MAGIC = loadWindowFile("tools/magic.js").MAGIC || {};
 
-/* 에피소드 줄거리 (tools/ep-s*.json) — 있으면 story 를 실제 줄거리로 덮어쓴다 */
+/* 에피소드 줄거리 (tools/ep-s*.json)
+ *
+ * 한 마리가 여러 회차에 걸쳐 나오기도 한다. 그런 경우 episodes 에 회차별로 나누어
+ * 적는다 — 「6기 7화 …·19화 …」를 한 딱지에 몰아 놓고 줄거리도 한 덩어리로 두면
+ * 어느 대목이 어느 화인지 읽는 사람이 갈라 내야 한다.
+ *   { nameKo, episode, plot }              회차가 하나일 때 (지금 대부분)
+ *   { nameKo, episodes: [{ episode, plot }] }   여러 회차일 때
+ * 둘 다 받아 안에서 episodes 배열로 맞춘다. */
 const EPISODES = fs.readdirSync(path.join(ROOT, "tools"))
   .filter((f) => /^ep-[\w-]+\.json$/.test(f))
   .flatMap((f) => JSON.parse(fs.readFileSync(path.join(ROOT, "tools", f), "utf8")));
 const epByName = new Map(EPISODES.map((e) => [e.nameKo, e]));
+
+/* 어느 모양으로 적혀 있든 [{ episode, plot }] 로 돌려준다.
+   회차 자료가 아예 없으면 details.js 의 설명이라도 회차 없이 담는다. */
+function epList(ep, detail) {
+  if (ep && Array.isArray(ep.episodes)) return ep.episodes.filter((e) => e && e.plot);
+  if (ep && ep.plot) return [{ episode: ep.episode || "", plot: ep.plot }];
+  if (detail && detail.story) return [{ episode: "", plot: detail.story }];
+  return [];
+}
+
+/* 프로필 (tools/profile.json) — 세 출처에서 모은 값 (tools/fetch-profile.mjs).
+ * 출처가 어긋나면 **나무위키를 따른다.** 두 곳에 다 있는 소품 106마리 가운데
+ * 74마리는 글자까지 같고, 나머지는 대개 표기 차이다 (마법책/책 · 자석(말굽자석)/자석).
+ *
+ * 마법은 병합하지 않는다. 나무위키 칸은 주문명과 효과인데(「<약오르지롱> 막대사탕으로…」)
+ * 도감의 magic 은 캐릭터를 풀어 쓴 서술문이라 성격이 다르다. 서술문을 그대로 둔다. */
+const PROFILE_PATH = path.join(ROOT, "tools/profile.json");
+const PROFILE = fs.existsSync(PROFILE_PATH)
+  ? new Map(JSON.parse(fs.readFileSync(PROFILE_PATH, "utf8")).map((r) => [r.nameKo, r]))
+  : new Map();
+
+const SEASON_NO = { emotion: 1, jewel: 2, key: 3, dessert: 4, star: 5, princess: 6 };
+
+/* 나무위키 소품 값을 손보는 자리. profile.json 은 fetch-profile.mjs 가 다시 만들므로
+   거기를 고치면 다음 수집에 지워진다. 고칠 것은 여기 적어 둔다. */
+const ITEM_OVERRIDE = {
+  "꺼꿀핑": "말굽자석",        // 나무위키는 「자석(말굽자석)」 — 괄호가 같은 말을 두 번 한다
+};
+
+/* 하츄핑 계열 5종은 나무위키가 문서를 공유해 소품이 한 칸에 뭉쳐 온다:
+ *   「손거울(1기) → 하프(2기) → 향수(3기) → 핸드벨(4기) → 글로우 퍼프(5기) → 요술봉(6기)」
+ * 버리고 블로그로 넘어가는 대신 기수로 갈라 각자에게 나눠 준다 — 이것도 나무위키 값이다.
+ * 뭉쳐 있지 않은 보통 값은 손대지 않는다. */
+function pickBySeason(value, seasonKey) {
+  const no = SEASON_NO[seasonKey];
+  if (!no || !/\(\d+기\)/.test(value)) return value;
+  for (const part of value.split(/\n|→/)) {
+    const m = /^(.*?)\s*\((\d+)기\)/.exec(part.trim());
+    if (m && Number(m[2]) === no) return m[1].trim();
+  }
+  return "";
+}
+
+/* 나무위키를 먼저 보고, 비었을 때만 블로그를 쓴다 */
+function fromProfile(nameKo, seasonKey) {
+  const p = PROFILE.get(nameKo);
+  if (!p) return { intro: "", item: "" };
+  return {
+    intro: (p.intro.namu || "").trim(),
+    item: (ITEM_OVERRIDE[nameKo]
+      || pickBySeason(p.item.namu || "", seasonKey) || p.item.blog || "").trim(),
+  };
+}
 
 /* 성별 (tools/gender.json) — 나무위키 정보상자에서 수집.
  * '여성'·'남성'만 태그로 쓰고, '불명' 같은 값은 표시하지 않는다. */
@@ -171,6 +232,7 @@ ROSTER.forEach((season) => {
     if (detail) agentIdToFinal.set(detail.id, id);
 
     const ep = epByName.get(nameKo);
+    const prof = fromProfile(nameKo, season.seasonKey);
 
     entries.push({
       id,
@@ -181,10 +243,10 @@ ROSTER.forEach((season) => {
       grade,
       gender: cleanGender(GENDER[nameKo]),
       emotion: (detail && detail.emotion) || "",
+      intro: prof.intro,
+      item: prof.item,
       magic: MAGIC[nameKo] || "",
-      episode: (ep && ep.episode) || "",
-      // 에피소드 줄거리가 있으면 그것을 쓰고, 없으면 기존 설명을 유지한다
-      story: (ep && ep.plot) || (detail && detail.story) || "",
+      episodes: epList(ep, detail),
       _rawRelations: (detail && detail.relations) || [],
       colorHex: (detail && detail.colorHex) || seasonVariant(season.color, i),
     });
@@ -265,7 +327,7 @@ entries.forEach((e) => {
   bySeason[e.season] = (bySeason[e.season] || 0) + 1;
 });
 const withMagic = entries.filter((e) => e.magic).length;
-const withEp = entries.filter((e) => e.episode).length;
+const withEp = entries.filter((e) => e.episodes.length).length;
 console.log(`✅ data/teeniepings.js 생성 — 총 ${entries.length}마리`);
 console.log("   등급:", byGrade);
 console.log("   기수:", bySeason);

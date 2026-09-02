@@ -151,9 +151,10 @@ a { color: inherit; text-decoration: none; }
   0% { box-shadow: 0 0 0 0 rgba(255, 111, 165, .55); }
   100% { box-shadow: 0 0 0 10px rgba(255, 111, 165, 0); }
 }
-/* 글 덩어리(마법·에피소드) 끝에 붙는 버튼. 문단 안에 인라인으로 들어가므로
-   본문 크기에 맞춰 줄이고, 글자 밑선에 맞춰 내려 앉힌다. */
-.speak-btn.speak-block { --sz: 24px; margin-left: 6px; vertical-align: -2px; }
+/* 글 덩어리(마법·에피소드)를 읽어 주는 버튼. 칸 제목 옆에 선다.
+   제목(.info-block h3)이 flex 라 gap 이 이미 사이를 벌려 준다 — margin 을 또 주면
+   두 번 벌어지고, vertical-align 은 flex 항목에 듣지 않아 둘 다 두지 않는다. */
+.speak-btn.speak-block { --sz: 24px; }
 
 /* 음성 합성이 없는 브라우저 — js/util.js 가 <html> 에 no-tts 를 단다.
    눌러도 아무 일이 없는 버튼이 남는 편보다 아예 안 보이는 편이 낫다. */
@@ -224,8 +225,11 @@ a { color: inherit; text-decoration: none; }
   content: "🔍"; position: absolute; left: 22px; top: 50%; transform: translateY(-50%);
   font-size: 16px; opacity: .6;
 }
+/* 기수·등급·좋아요를 한 상자에 담아 자리가 남는 대로 같은 줄에 붙인다.
+   무리마다 한 줄씩 내주면 검색창 아래가 세 줄이 되어 목록이 그만큼 밀린다. */
+.filters { display: flex; flex-wrap: wrap; gap: 10px 14px; }
 .filter-group { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.filter-label { font-size: 12px; font-weight: 800; color: var(--ink-soft); margin-right: 2px; }
+
 .chip {
   padding: 7px 14px; border-radius: 999px; font-weight: 700; font-size: 13px;
   border: 2px solid var(--line); background: var(--card); color: var(--ink-soft);
@@ -233,9 +237,40 @@ a { color: inherit; text-decoration: none; }
 }
 .chip:hover { border-color: var(--pink); color: var(--ink); }
 .chip.active { background: var(--purple); border-color: var(--purple); color: #fff; }
-.chip.active.season { background: var(--pink); border-color: var(--pink); }
 
-.result-count { color: var(--ink-soft); font-weight: 700; font-size: 14px; margin: 10px 2px 0; }
+/* 무리를 알약 하나로 묶는다 — ( 1기 감정 | 2기 보석 | … | 극장판 ) 꼴.
+   테두리는 무리가 한 번만 두르고, 안의 칩은 저마다의 테두리를 버리고 가는 금으로만
+   갈린다. 낱낱이 떠 있을 때보다 어디까지가 한 무리인지 또렷해, 없앤 이름표 몫을
+   모양이 대신한다. 그만큼 무리 사이 여백도 32px 에서 14px 로 줄일 수 있었다.
+
+   모서리는 상자가 아니라 양 끝 칩이 굴린다. overflow: hidden 으로 잘라 내면
+   좁은 화면의 가로 스크롤(아래 반응형)이 함께 막힌다. */
+.filters .filter-group {
+  gap: 0;
+  border: 2px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: var(--card);
+}
+.filters .chip {
+  border: 0; border-radius: 0; background: none;
+  border-left: 1px solid var(--line);
+}
+.filters .chip:first-child { border-left: 0; border-radius: var(--radius-pill) 0 0 var(--radius-pill); }
+.filters .chip:last-child { border-radius: 0 var(--radius-pill) var(--radius-pill) 0; }
+.filters .chip:only-child { border-radius: var(--radius-pill); }
+/* 테두리가 없어졌으니 손을 올렸을 때는 바탕색으로 알린다 */
+.filters .chip:hover:not(.active) { background: var(--pink-soft); color: var(--ink); }
+/* 켜진 칩은 무리를 가리지 않고 다 같은 분홍이다. 기수만 분홍이고 등급·좋아요가
+   보라면, 같은 자리에서 하는 같은 일(고르기)이 서로 다른 일처럼 보인다.
+   인기 차트의 주간·월간 탭은 .chip 을 함께 쓰지만 이 밖이라 보라 그대로다. */
+.filters .chip.active { background: var(--pink); color: #fff; }
+/* 켜지면 바탕이 분홍이라 붉은 하트가 묻힌다. 글자가 흰색이 되듯 하트도 흰색으로
+   돌린다 — brightness(0) 으로 새까맣게 만든 뒤 invert(1) 로 뒤집으면 어떤 그림문자든
+   순백이 된다. 꺼져 있을 때는 붉은 하트 그대로다.
+   (상세 페이지의 좋아요 버튼도 같은 방식으로 .like-heart 에 filter 를 쓴다) */
+.chip-heart { margin-right: 5px; }
+.filters .chip.active .chip-heart { filter: brightness(0) invert(1); }
+
 
 /* ===== 그리드 카드 ===== */
 .grid {
@@ -243,11 +278,16 @@ a { color: inherit; text-decoration: none; }
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
 }
 .card {
+  position: relative;                /* 아래 .card-hit 가 이 칸을 덮는다 */
   background: var(--card); border-radius: var(--radius); overflow: hidden;
   box-shadow: var(--shadow); border: 1px solid var(--line);
   transition: transform .18s, box-shadow .18s; cursor: pointer;
   display: flex; flex-direction: column;
 }
+/* 카드를 통째로 덮는 투명한 링크. 카드가 <a> 이면 그 안에 버튼을 둘 수 없어
+   (링크 안의 버튼) 인기 차트의 .rank-hit 와 같은 방법을 쓴다. */
+.card-hit { position: absolute; inset: 0; z-index: 1; border-radius: inherit; }
+.card .speak-btn { position: relative; z-index: 2; }
 .card:hover { transform: translateY(-6px); box-shadow: var(--shadow-hover); }
 /* 여백은 이미지 파일이 아니라 여기서 준다. 파일에 여백을 넣으면
    balance-size.py 로 맞춘 크기 균형이 깨지고 성긴 그림이 더 작아진다.
@@ -265,7 +305,12 @@ a { color: inherit; text-decoration: none; }
 .card .body { padding: 6px 12px 14px; }
 /* 카드에서 가장 먼저 읽히는 정보라 크게. 가장 긴 이름(프린세스 하츄핑, 8자)도
    칸 최소 폭 180px - 좌우 여백 24px = 156px 안에 한 줄로 들어간다. */
-.card .name { font-weight: 800; font-size: 20px; }
+.card .name { font-weight: 800; font-size: 20px; min-width: 0; }
+/* 이름과 읽어 주기 버튼을 한 줄에. 버튼은 이름 한 줄 높이에 맞춰 줄인다.
+   가장 긴 「프린세스 하츄핑」은 아이패드 세로(4단)에서 두 줄로 접히는데,
+   157마리 중 넷뿐이라 이름을 줄이거나 버튼을 딴 곳에 두는 것보다 낫다고 봤다. */
+.card .name-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.card .name-row .speak-btn { --sz: 24px; }
 .card .name-en { font-size: 12px; color: var(--ink-soft); font-weight: 700; }
 /* 카드 태그는 한 줄로. 좁은 카드에 기수·등급·성별 셋이 들어가야 해서
    여백과 간격을 목록에서만 조금 좁힌다 (상세 페이지 태그는 그대로). */
@@ -367,13 +412,6 @@ a { color: inherit; text-decoration: none; }
   display: flex; align-items: center; gap: 6px;
 }
 .info-block p { margin: 0; color: var(--ink); font-weight: 500; }
-.pending { color: var(--ink-soft); font-weight: 600; font-style: italic; }
-/* 사연 옆 회차 배지 */
-.ep-badge {
-  display: inline-block; margin-left: 6px; padding: 3px 10px; border-radius: 999px;
-  background: var(--purple-soft); color: #6b46c1; font-size: 11.5px; font-weight: 800;
-  vertical-align: 1px;
-}
 
 /* ===== 관계 목록 ===== */
 /* 마법·에피소드와 같은 .info-block 안에 들어간다.
@@ -573,7 +611,26 @@ a.rel-item:hover { transform: translateY(-2px); border-color: var(--pink); box-s
 .rank { padding-block: 26px 70px; text-align: center; }   /* 좌우는 .wrap 이 담당 */
 .rank-tabs { display: flex; justify-content: center; gap: 8px; margin: 14px 0 0; }
 .rank-nav { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 16px 0 14px; }
-.rank-range { color: var(--ink); font-size: 15px; font-weight: 800; min-width: 150px; }
+/* 폭은 가장 긴 이름('2026년 53주 (집계중)')에 맞춰 잡는다. 좁게 두면 (집계중) 이
+   붙고 떨어질 때마다 양옆 화살표가 들썩인다. 이름이 짧을 때 남는 자리는 양옆으로
+   고르게 두어야 글자가 두 화살표 한가운데에 선다. */
+.rank-range {
+  color: var(--ink); font-size: 15px; font-weight: 800;
+  min-width: 210px; text-align: center;
+}
+/* 이번 기간은 숫자가 아직 차오르는 중이라는 단서. 크기는 기간 이름과 같게 두고
+   색과 굵기로만 한 걸음 물러선다. */
+.rank-live {
+  font-style: normal; font-weight: 700; color: var(--ink-soft);
+  animation: live-blink 1.8s ease-in-out infinite;
+}
+/* 껐다 켰다 하지 않고 옅어졌다 짙어지기만 한다. 아주 사라지면 글자가 있던 자리가
+   빈 칸으로 남아 눈이 그리 끌린다 — 숫자가 도는 중이라는 기척이면 된다. */
+@keyframes live-blink { 50% { opacity: .35; } }
+/* 움직임을 줄여 달라고 한 기기에서는 옅은 채로 멈춘다 */
+@media (prefers-reduced-motion: reduce) {
+  .rank-live { animation: none; opacity: .7; }
+}
 /* 이전·다음 표시. 화살표 글자(← →)는 글꼴마다 굵기와 길이가 제각각이라 두 버튼이
    짝이 맞지 않아 보였다. 인라인 SVG 쉐브론은 currentColor 를 따라가고 획 굵기가
    고정이라 어디서나 같은 모양이다 (읽어 주기·공유 아이콘과 같은 방식). */
@@ -795,7 +852,7 @@ a.rel-item:hover { transform: translateY(-2px); border-color: var(--pink); box-s
 
   /* 필터 칩이 여러 줄로 쌓이지 않도록 가로 스크롤 */
   .filter-group {
-    flex-wrap: nowrap; overflow-x: auto; gap: 6px;
+    flex-wrap: nowrap; overflow-x: auto;
     scrollbar-width: none; -webkit-overflow-scrolling: touch;
   }
   .filter-group::-webkit-scrollbar { display: none; }
