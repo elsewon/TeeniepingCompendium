@@ -60,8 +60,8 @@
     btn.hidden = false;
   }
 
-  document.addEventListener("ping:stats", (e) => {
-    const p = e.detail && e.detail.page;
+  onStats((s) => {
+    const p = s && s.page;
     if (p && typeof p.like === "number") paint(p.like);
   });
 

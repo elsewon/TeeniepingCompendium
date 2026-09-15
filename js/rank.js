@@ -78,7 +78,9 @@ function rangeLabel(period, at) {
 /* ── 그리기 ──────────────────────────────────── */
 /* 직전 기간 대비 오르내림. 비교할 기록이 없으면 delta 자체가 오지 않는데,
    그때도 빈 칸을 내보낸다 — 순위 숫자 아래 자리를 늘 같은 높이로 잡아 두어야
-   숫자가 그림과 수직 가운데에 그대로 선다 (css 의 .rank-no 참고). */
+   숫자가 그림과 수직 가운데에 그대로 선다 (css 의 .rank-no 참고).
+   "신규" 는 직전 기간 이 차트(10 위)에 없던 줄이다 — 그 아래에 있었든
+   기록이 아예 없었든, 이번에 처음 이름을 올린 것은 마찬가지다. */
 function deltaHTML(row) {
   if (!("delta" in row)) return `<em class="rank-delta"></em>`;
   if (row.was == null) return `<em class="rank-delta new">신규</em>`;

@@ -242,8 +242,8 @@ function drawModeCounts() {
   });
 }
 
-document.addEventListener("ping:stats", (e) => {
-  const m = (e.detail || {}).mode;
+onStats((s) => {
+  const m = (s || {}).mode;
   if (!m || !m.today || !m.total) return;
   modeCounts = m;
   drawModeCounts();

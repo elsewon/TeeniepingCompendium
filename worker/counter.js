@@ -64,6 +64,7 @@
  *        수치와 종합 점수(좋아요 10 · 조회 1 — 위의 SCORE)가 둘 다 같아야 같은 순위다.
  *        좋아요가 나란히 5여도 조회수가 다르면 순위를 가른다.
  *        직전 기간 순위도 같이 계산해 각 줄에 delta(오르내림)를 붙인다.
+ *        직전 순위는 그 기간 차트 안(상위 limit)까지만 본다 — 밖에 있었으면 신규다.
  *        at 을 주면 그 기간을 본다 (주 = 그 주 월요일 YYYY-MM-DD, 월 = YYYY-MM).
  *        없으면 이번 기간. 응답의 now 로 "지금이 어느 기간인지" 도 함께 알려 준다.
  *
@@ -352,10 +353,16 @@ export class Counter {
     };
 
     const build = (key) => {
-      // 직전 순위는 상위 몇 개가 아니라 전체에서 매긴다 —
-      // 그러지 않으면 지난 기간 11 위였던 티니핑이 "신규" 로 보인다.
+      /* 직전 순위도 차트에 올랐던 데까지만 본다 — 10 위 밖은 견주지 않는다.
+         차트가 보여 주는 것은 열 자리뿐이고, 오르내림도 그 열 자리 안의 이야기다.
+         지난 기간 40 위였다가 3 위가 된 줄에 ▲37 을 붙여 봐야 읽히지 않고,
+         밖에서 뒤척인 차이(40 위든 20 위든)까지 숫자에 섞인다.
+         밖에서 들어온 줄은 "신규" — 이번에 처음 차트에 이름을 올렸다는 뜻이다.
+         자르는 자리는 이번 기간과 같다(아래 slice 와 같은 limit). */
       const before = new Map();
-      withRanks(order(prev, key), key).forEach((r) => before.set(r.id, r.rank));
+      withRanks(order(prev, key), key)
+        .slice(0, limit)
+        .forEach((r) => before.set(r.id, r.rank));
       const hadData = before.size > 0;
       // 순위를 전체에서 매긴 뒤에 자른다 (자르고 매기면 공동 순위가 어긋난다)
       return withRanks(order(cur, key), key).slice(0, limit).map((r) => {

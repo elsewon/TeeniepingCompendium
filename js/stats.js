@@ -53,10 +53,27 @@ function renderStats(s) {
   if (wrap) wrap.hidden = false;
 }
 
-/* 받아 온 숫자를 다른 화면도 쓸 수 있게 알린다 (이름 맞추기의 난도별 도전수 등).
-   요청을 두 번 보내지 않으려고 이벤트로 넘긴다. */
+/* 받아 온 숫자를 다른 화면도 쓸 수 있게 알린다 (이름 맞추기의 난도별 도전수,
+   개별 티니핑의 좋아요 수). 요청을 두 번 보내지 않으려고 이벤트로 넘긴다.
+
+   신호는 받는 쪽이 붙기 전에 지나갈 수 있다. 이 파일이 먼저 내려와 요청을 보내고
+   받는 쪽(js/quiz.js · js/page.js)은 그 뒤에 내려오는데, 그 사이에 응답이 오면
+   아직 아무도 듣고 있지 않다. 그래서 마지막 값을 들고 있다가 늦게 온 쪽에 건넨다.
+   새로고침하면 늘 보이던 것이 그래서다 — 스크립트가 모두 캐시에서 곧바로 실행되어
+   응답보다 먼저 자리를 잡는다. 처음 열 때만, 그것도 파일이 늦게 오는 날만 어긋난다. */
+let latestStats = null;
+
 function publish(s) {
-  if (s) document.dispatchEvent(new CustomEvent("ping:stats", { detail: s }));
+  if (!s) return;
+  latestStats = s;
+  document.dispatchEvent(new CustomEvent("ping:stats", { detail: s }));
+}
+
+/* 숫자를 쓰는 쪽은 addEventListener 대신 이것을 부른다 — 이미 지나간 값이 있으면
+   그 자리에서 한 번 주고, 그다음부터는 새 값이 올 때마다 준다. */
+function onStats(fn) {
+  document.addEventListener("ping:stats", (e) => fn(e.detail));
+  if (latestStats) fn(latestStats);
 }
 
 async function callStats(path, options) {
