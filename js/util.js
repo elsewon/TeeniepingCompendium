@@ -63,21 +63,29 @@ function placeholderSVG(t, size) {
 </svg>`;
 }
 
-/* 이미지 마크업: images/<id>.png 를 시도하고, 실패 시 플레이스홀더 SVG 로 대체.
- *
- * 목록은 157장을 한꺼번에 불러오므로 작은 WebP 썸네일을 쓴다.
- * 상세·퀴즈처럼 크게 보여 주는 곳만 원본 PNG 를 쓴다.
- * (size 는 호출부가 넘기는 표시 크기 — 카드 260, 상세 320, 퀴즈 380) */
-function imageMarkup(t, size, prefix) {
+/* 그림 주소. 목록은 157장을 한꺼번에 불러오므로 작은 WebP 썸네일을, 상세·퀴즈처럼
+   크게 보여 주는 곳은 원본 PNG 를 쓴다 (size 는 호출부가 넘기는 표시 크기 —
+   카드 260, 상세 320, 퀴즈 380).
+   ?v=<이미지 해시> — 그림을 고쳐 배포했을 때 브라우저가 캐시된 옛 그림을 계속 보여
+   주는 것을 막는다. 그림이 그대로면 해시도 그대로라 캐시가 유지된다.
+   퀴즈가 다음 문제의 그림을 미리 받아 둘 때도 이 주소를 써야 캐시가 맞는다. */
+function imageSrc(t, size, prefix) {
   const useThumb = size && size <= 300;
   const dir = prefix || "";
-  // ?v=<이미지 해시> — 그림을 고쳐 배포했을 때 브라우저가 캐시된 옛 그림을
-  // 계속 보여 주는 것을 막는다. 그림이 그대로면 해시도 그대로라 캐시가 유지된다.
   const v = t.imgv ? "?v=" + t.imgv : "";
-  const src = (useThumb
+  return (useThumb
     ? dir + "images/thumb/" + t.id + ".webp"
     : dir + "images/" + t.id + ".png") + v;
-  return `<img src="${src}" alt="${t.nameKo}" loading="lazy"
+}
+
+/* 이미지 마크업: images/<id>.png 를 시도하고, 실패 시 플레이스홀더 SVG 로 대체.
+ * eager 를 주면 곧바로 받는다. 목록처럼 여럿이 깔리는 곳은 lazy 로 두어 보이는 것부터
+ * 받지만, 퀴즈의 큰 그림 한 장은 곧바로 받아야 한다 — lazy 로 두면 사파리가 스크롤
+ * 같은 계기가 있을 때까지 미루기도 해서, 카운트다운이 그림을 기다리는 동안 몇 초씩
+ * 비었다. */
+function imageMarkup(t, size, prefix, eager) {
+  const src = imageSrc(t, size, prefix);
+  return `<img src="${src}" alt="${t.nameKo}" loading="${eager ? "eager" : "lazy"}"${eager ? ' fetchpriority="high"' : ""}
     onerror="this.outerHTML=this.getAttribute('data-fallback')"
     data-fallback="${placeholderSVG(t, size).replace(/"/g, "&quot;").replace(/'/g, "&#39;")}">`;
 }
@@ -336,8 +344,8 @@ function speakOne(text, btn, onDone) {
 
   speakingBtn = btn || null;
   if (btn) btn.classList.add("speaking");
-  // 취소 직후라도 speak 는 곧바로 부른다 — 사파리는 누른 그 흐름 안에서
-  // 불러야 소리를 내 준다 (setTimeout 으로 미루면 무시될 수 있다).
+  // 취소 직후라도 speak 는 곧바로 부른다 — 미룰 까닭이 없다. 흐름 밖의 발화를 iOS 가
+  // 허용하는 것은 흐름 안에서 한 번 깨워 둔 뒤다(primeSpeech). 맥은 처음부터 허용한다.
   pushUtterance(u);
 }
 
@@ -351,9 +359,11 @@ function speakText(text, btn) {
   speakOne(text, btn);
 }
 
-/* 사파리는 사용자가 조작하기 전에는 소리를 내 주지 않는다. 아래 speakSeries 는
-   텀을 두고 읽으므로 그때는 이미 누른 흐름 밖이다. 그래서 흐름 안에 있는 지금
-   (누른 그 순간) 소리 없는 발화를 흘려 엔진을 깨워 둔다. */
+/* iOS 사파리는 첫 발화를 누른 흐름 안에서 해야 그 뒤의 발화를 허용한다 — WebKit 이 iOS 에서만
+   거는 제한으로, 흐름 안에서 한 번 speak() 하면 그 페이지에서는 풀린다. 선택지 이어 읽기와
+   이름 맞추기의 정답 읽기는 첫 발화가 흐름 밖(텀 뒤·3초 뒤)이라, 누른 그 순간 소리 없는
+   발화를 흘려 엔진을 깨워 둔다. 맥에는 이 제한이 없어 맥에서 재 본 것만 믿고 이 깨우기를
+   뺐다가 아이폰에서 정답 읽기가 조용해졌다 — speak 는 불렸는데 start 가 오지 않았다. */
 function primeSpeech() {
   const synth = window.speechSynthesis;
   if (!synth) return;
@@ -367,12 +377,13 @@ function primeSpeech() {
 /* 이름 여럿을 텀을 두고 차례로 읽는다 (이름 맞추기의 선택지 셋).
    items 는 { text, btn } 목록 — btn 을 주면 읽는 동안 그 버튼이 펄스로 뛴다.
    나타나고 gap 만큼 쉰 뒤 첫 이름을 읽고, 하나가 끝날 때마다 다시 gap 만큼 쉰다.
-   쉬는 참이 있어야 아이가 방금 들은 이름을 그림과 맞춰 볼 틈이 생긴다. */
+   쉬는 참이 있어야 아이가 방금 들은 이름을 그림과 맞춰 볼 틈이 생긴다.
+   첫 이름은 누른 흐름 밖(gap 뒤)에서 읽으므로 흐름 안인 지금 엔진을 깨워 둔다(위). */
 function speakSeries(items, gap = 500) {
   const list = (items || []).filter((it) => it && it.text);
   if (!window.speechSynthesis || !list.length) return;
   stopSpeaking();
-  primeSpeech();                  // 흐름 안에서 미리 깨워 둔다
+  primeSpeech();                  // 흐름 안에서 미리 깨워 둔다 (iOS)
   const id = seriesId;            // stopSpeaking 이 올려 둔 이번 벌의 표
   let i = 0;
   const step = () => {
@@ -384,6 +395,18 @@ function speakSeries(items, gap = 500) {
     });
   };
   seriesTimer = setTimeout(step, gap);
+}
+
+/* 화면을 떠날 때 읽던 것을 멈춘다 — 다른 페이지로 가기·뒤로 가기·새로고침 모두.
+   크롬은 페이지가 바뀌어도 읽던 소리를 이어 간다(합성기가 페이지 밖에서 돈다).
+   목록에서 이름을 듣다가 그 카드를 누르면 상세 페이지 위에서 목록의 목소리가 마저
+   나오고, 뒤로 가기로 되살아난(bfcache) 페이지는 '읽는 중' 표시(.speaking)를 그대로
+   안고 돌아온다. 한 페이지 안에서 화면이 바뀔 때 — 이름 맞추기의 다음 문제·난도 화면,
+   인기 차트의 기간 넘기기, 목록 다시 그리기 — 는 그 페이지가 직접 stopSpeaking 을 부른다. */
+/* tools/build-pages.mjs 가 이 파일을 addEventListener 없는 가짜 window 로 싣는다
+   (imageMarkup·speakBtnHTML 만 쓰려고). 거기서 넘어지지 않게 있는지 보고 건다. */
+if (typeof window.addEventListener === "function") {
+  window.addEventListener("pagehide", stopSpeaking);
 }
 
 document.addEventListener("click", (e) => {
@@ -407,11 +430,11 @@ document.addEventListener("click", (e) => {
 
 /* 목소리를 낼 수 없는 브라우저에서는 버튼을 아예 감춘다 (css 의 .no-tts).
    눌러도 아무 일이 없는 버튼이 남는 편보다 안 보이는 편이 낫다 — 좋아요와 같은 판단. */
-if (typeof document !== "undefined" && document.documentElement) {
-  if (window.speechSynthesis) {
-    // 크롬은 첫 getVoices() 가 비어 있다. 미리 한 번 불러 목록을 채워 둔다.
-    try { window.speechSynthesis.getVoices(); } catch { /* 없어도 lang 만으로 읽는다 */ }
-  } else {
-    document.documentElement.classList.add("no-tts");
-  }
+/* 페이지를 열 때 합성기를 미리 깨우지 않는다. 한때 크롬의 첫 getVoices() 가 비어 있다고
+   여기서 한 번 불러 목록을 채워 두었는데, 맥 사파리는 음성 합성기가 이미 깨어 있는 상태에서
+   만든 첫 AudioContext 에 큰 출력 버퍼를 준다 — 이름 맞추기의 비프가 화면보다 160ms 늦게
+   났고(합성기 전에 만든 컨텍스트는 5ms), 이 한 줄을 빼자 사라졌다. 크롬은 lang 만으로도
+   맞는 목소리를 고르고, 첫 발화가 목록을 채운다. */
+if (typeof document !== "undefined" && document.documentElement && !window.speechSynthesis) {
+  document.documentElement.classList.add("no-tts");
 }

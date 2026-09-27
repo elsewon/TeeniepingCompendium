@@ -152,6 +152,7 @@ function render(data) {
 }
 
 async function load() {
+  stopSpeaking();                 // 줄이 통째로 바뀐다 — 읽던 이름의 버튼이 사라지므로 읽기도 멈춘다
   const loading = `<div class="empty">불러오는 중…</div>`;
   SORTS.forEach(({ key }) => { el[key].innerHTML = loading; });
   const at = state.at ? `&at=${encodeURIComponent(state.at)}` : "";

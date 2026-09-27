@@ -160,6 +160,7 @@ function cardHTML(t) {
 
 function render() {
   syncURL();
+  stopSpeaking();              // 카드가 통째로 바뀐다 — 읽던 이름의 버튼이 사라지므로 읽기도 멈춘다
   liked = likedIds();          // 개별 페이지에 다녀오는 사이에 늘었을 수 있다
   const list = getAll().filter(matches);
 
@@ -200,133 +201,6 @@ clearEl.addEventListener("click", () => {
   render();
   searchEl.focus();
 });
-
-/* ===== 들은 말 고치기 =====
- * 티니핑 이름은 사전에 없는 말이라 인식기가 제 나름대로 아는 낱말로 바꿔 놓는다.
- * "공쥬핑" 은 "공주핑" 으로, "하츄핑" 은 "하추핑" 으로, "까르핑" 은 "가르핑" 으로.
- *
- * 손으로 고른 표를 두지 않는다. 157마리 전부를 규칙으로 훑어 "비슷하게 들리는
- * 열쇠"를 만들어 두고, 들은 말의 열쇠가 그 중 하나와 같으면 진짜 이름으로 바꾼다.
- * 새 티니핑이 늘어도 표를 손볼 일이 없다.
- *
- * 열쇠는 한글을 자모로 풀어 "귀로 잘 안 갈리는 것끼리" 한 자리에 모은 것이다.
- *   된소리·거센소리를 예사소리로   ㄲㅋ→ㄱ  ㄸㅌ→ㄷ  ㅃㅍ→ㅂ  ㅆ→ㅅ  ㅉㅊ→ㅈ
- *   비슷한 홀소리를 한 자리로      ㅒㅔㅖ→ㅐ  ㅑ→ㅏ  ㅕ→ㅓ  ㅛ→ㅗ  ㅠ→ㅜ
- *   받침은 실제 소리대로 중화      ㅅㅆㅈㅊㅌㅎ→ㄷ  ㅋㄲ→ㄱ  ㅍ→ㅂ …
- * 띄어쓰기는 무시한다 ("공주 핑" 도 같은 열쇠). */
-const CHO = "ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ";
-const JUNG = "ㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣ";
-const JONG = " ㄱㄲㄳㄴㄵㄶㄷㄹㄺㄻㄼㄽㄾㄿㅀㅁㅂㅄㅅㅆㅇㅈㅊㅋㅌㅍㅎ";
-const FOLD = {
-  ㄲ: "ㄱ", ㅋ: "ㄱ", ㄸ: "ㄷ", ㅌ: "ㄷ", ㅃ: "ㅂ", ㅍ: "ㅂ", ㅆ: "ㅅ", ㅉ: "ㅈ", ㅊ: "ㅈ",
-  ㅒ: "ㅐ", ㅔ: "ㅐ", ㅖ: "ㅐ", ㅑ: "ㅏ", ㅕ: "ㅓ", ㅛ: "ㅗ", ㅠ: "ㅜ",
-  ㅙ: "ㅚ", ㅞ: "ㅚ", ㅢ: "ㅣ",
-};
-/* 받침은 초성과 접는 방향이 다르다 — 소리가 일곱으로 중화된다 */
-const FOLD_JONG = {
-  ㄲ: "ㄱ", ㅋ: "ㄱ", ㄳ: "ㄱ", ㄺ: "ㄱ",
-  ㅅ: "ㄷ", ㅆ: "ㄷ", ㅈ: "ㄷ", ㅊ: "ㄷ", ㅌ: "ㄷ", ㅎ: "ㄷ",
-  ㅍ: "ㅂ", ㅄ: "ㅂ", ㄿ: "ㅂ",
-  ㄼ: "ㄹ", ㄽ: "ㄹ", ㄾ: "ㄹ", ㅀ: "ㄹ", ㄵ: "ㄴ", ㄶ: "ㄴ", ㄻ: "ㅁ",
-};
-
-function sayKey(text) {
-  let out = "";
-  for (const ch of String(text).toLowerCase()) {
-    const code = ch.charCodeAt(0) - 0xac00;
-    if (code < 0 || code > 11171) {
-      if (/[a-z0-9]/.test(ch)) out += ch;      // 영문 이름도 있으므로 남긴다
-      continue;
-    }
-    const cho = CHO[Math.floor(code / 588)];
-    const jung = JUNG[Math.floor((code % 588) / 28)];
-    const jong = JONG[code % 28].trim();
-    out += (FOLD[cho] || cho) + (FOLD[jung] || jung) + (jong ? FOLD_JONG[jong] || jong : "");
-  }
-  return out;
-}
-
-/* 열쇠 → 이름. 두 이름이 같은 열쇠를 가지면(아야핑 / 아아핑) 아무것도 고르지 않고
-   null 을 넣어 둔다 — 어느 쪽인지 모르는데 하나를 골라 주면 엉뚱한 것을 찾게 된다. */
-/* 이름인지 곧바로 가리려고 따로 담아 둔다 (말해서 찾기의 후보 고르기에 쓴다) */
-const NAMES = new Set(getAll().map((t) => t.nameKo));
-
-const NAME_BY_KEY = (() => {
-  const m = new Map();
-  for (const t of getAll()) {
-    const k = sayKey(t.nameKo);
-    m.set(k, m.has(k) && m.get(k) !== t.nameKo ? null : t.nameKo);
-  }
-  return m;
-})();
-
-/* 들은 말을 이름으로 고친다. 못 고치면 들은 그대로 돌려준다 —
-   "타르트" 처럼 이야기 속 낱말로 찾는 길도 열어 두어야 한다. */
-function fixHeard(text) {
-  const key = sayKey(text);
-  if (!key) return text;
-
-  const exact = NAME_BY_KEY.get(key);
-  if (exact) return exact;
-
-  /* 말이 끊겼을 때 이어 준다. "하추" 는 "하츄핑" 의 앞머리인데, 검색이 글자
-     그대로 견주는 것이라 츄와 추가 달라 하나도 안 걸린다.
-     두 글자(열쇠 4자) 이상이고 앞머리가 걸리는 이름이 딱 하나일 때만 이어 준다. */
-  if (key.length >= 4) {
-    let only = null;
-    for (const [k, name] of NAME_BY_KEY) {
-      if (!name || !k.startsWith(key)) continue;
-      if (only) return text;              // 둘 이상이면 고르지 않는다
-      only = name;
-    }
-    if (only) return only;
-  }
-
-  /* 가운데가 빠졌을 때 되살린다. 아이패드에서 "다이아 하츄핑" 이 "다이아 츄" 로
-     들어왔는데, '하' 한 음절이 통째로 빠져 앞머리 맞추기로는 살릴 수 없다.
-     들은 열쇠의 낱자가 이름 열쇠에 **차례대로** 들어 있으면(부분열) 같은 이름으로 본다.
-
-     이것만으로는 너무 헐거워 「딸기→달콤핑」·「여유→여우핑」까지 바꿔 버린다.
-     그래서 둘을 더 건다 — 들은 말이 세 음절 이상이고, 이름이 그보다 두 음절 넘게
-     길지 않을 것. 이러면 「딸기」·「공주」·「프린세스」·「타르트」는 그대로 두고
-     감정 84개 가운데 이름으로 바뀌는 것이 하나도 없다. */
-  /* 들은 말이 이미 이름의 소리를 갖췄으면 손대지 않는다. NAME_BY_KEY 에 열쇠가
-     있다는 것은 그 이름이거나, 아야핑/아아핑처럼 소리가 겹쳐 고르지 않기로 한
-     짝이라는 뜻이다. 이때까지 부분열로 넘기면 「아야핑」이 「얌얌핑」이 된다. */
-  const heard = syllables(text);
-  if (heard >= 3 && !NAME_BY_KEY.has(key)) {
-    let only = null;
-    for (const [k, name] of NAME_BY_KEY) {
-      if (!name) continue;
-      const len = syllables(name);
-      if (len < heard || len - heard > 2 || !subseq(key, k)) continue;
-      if (only) return text;              // 둘 이상이면 고르지 않는다
-      only = name;
-    }
-    if (only) return only;
-  }
-  return text;
-}
-
-/* 한글 낱자만 센다 (사이 띄어쓰기·기호는 뺀다) */
-function syllables(text) {
-  let n = 0;
-  for (const ch of String(text)) {
-    const c = ch.charCodeAt(0) - 0xac00;
-    if (c >= 0 && c <= 11171) n++;
-  }
-  return n;
-}
-
-/* a 의 글자가 b 안에 차례대로 다 나오나 */
-function subseq(a, b) {
-  let i = 0;
-  for (const c of b) {
-    if (c === a[i]) i++;
-    if (i === a.length) return true;
-  }
-  return false;
-}
 
 /* ===== 말해서 찾기 =====
  * 글을 못 읽는(또는 아직 자판이 서툰) 아이가 이름을 말해서 찾을 수 있게 한다.
@@ -373,11 +247,11 @@ if (!Recognition) {
       /* 중간 결과까지 이어 붙인다 — 말하는 대로 검색창이 따라 찬다.
          앞선 결과는 이미 굳은 것이라 첫 후보만 쓰고, 마지막 결과에서만 후보를
          견준다. 이름으로 딱 떨어지는 후보가 있으면 그것을 쓰고, 없으면 첫 후보를
-         고쳐서 쓴다. 인식기는 문장 끝에 마침표를 붙이곤 하는데 검색어에는 군더더기다. */
+         고쳐서 쓴다. 고치는 규칙은 js/hear.js 에 있다 (이름 맞추기와 같이 쓴다). */
       let head = "";
       for (let i = 0; i < e.results.length - 1; i++) head += e.results[i][0].transcript;
       const last = e.results[e.results.length - 1];
-      const clean = (s) => fixHeard(String(s).replace(/[.。]\s*$/, "").trim());
+      const clean = (s) => fixHeard(cleanHeard(s));
 
       let first = null;
       for (let i = 0; i < last.length; i++) {
@@ -407,6 +281,20 @@ if (!Recognition) {
 
   // 자판으로 치기 시작하면 듣기를 멈춘다 (둘이 같은 칸을 두고 다투지 않게)
   searchEl.addEventListener("input", () => { if (rec) rec.stop(); });
+
+  /* 화면을 떠나면(카드를 눌러 상세로 가기·뒤로 가기) 듣기를 그 자리에서 접는다.
+     stop() 은 듣던 것을 마저 풀어 내놓고서야 onend 를 부르는데, 그 사이 페이지가
+     얼어 붙으면(bfcache) '듣는 중' 표시를 안은 채 되살아난다. abort() 로 곧바로 끊고
+     표시도 여기서 지운다. 처리기는 먼저 떼어 낸다 — 되살아난 뒤 새로 듣기 시작했을 때
+     옛 인식기의 onend 가 뒤늦게 와서 새것을 끄면 안 된다.
+     읽어 주기 쪽은 js/util.js 가 같은 때에 멈춘다. */
+  window.addEventListener("pagehide", () => {
+    if (!rec) return;
+    const r = rec;
+    r.onresult = r.onerror = r.onend = null;
+    stopListening();
+    try { r.abort(); } catch { /* 이미 끝난 인식기면 던질 수 있다 */ }
+  });
 }
 
 // esc 로도 지우기

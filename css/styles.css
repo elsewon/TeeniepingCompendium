@@ -452,22 +452,82 @@ a.rel-item:hover { transform: translateY(-2px); border-color: var(--pink); box-s
      제자리에서 정답 행으로 갈아 끼워지므로, 높이가 다르면 칸이 그만큼 튄다.
      정답 행 높이 = 그림 54 + 위아래 여백 10×2 + 테두리 1×2 = 76 */
   --answer-h: 76px;
+  /* 이름 칸의 마이크 단추 지름. 3초에 그 자리에 오는 O 도 이 크기로 그린다(.answer-row .mark). */
+  --mic-size: 30px;
   max-width: 430px; margin: 0 auto; background: var(--card); border-radius: var(--radius);
   box-shadow: var(--shadow); border: 1px solid var(--line); padding: 26px; position: relative;
 }
 .quiz-image { border-radius: var(--radius-sm); overflow: hidden; margin-bottom: 18px; background: var(--pink-soft); }
 /* 원본 비율이 제각각이라 contain 으로 맞춘다 (없으면 정사각형으로 찌그러짐) */
 .quiz-image img, .quiz-image svg { width: 100%; display: block; aspect-ratio: 1/1; object-fit: contain; }
-/* 가려진 이름 칸. 누르면 제자리에서 정답 행으로 갈아 끼워지므로 높이를 맞춰 둔다
-   (선택지와 같은 --answer-h). 고정 높이를 쓰면 정답 행과 따로 놀아 칸이 튄다. */
+/* 가려진 이름 칸. 3초가 지나면 제자리에서 정답 행으로 갈아 끼워지므로 높이를 맞춰 둔다
+   (선택지와 같은 --answer-h). 고정 높이를 쓰면 정답 행과 따로 놀아 칸이 튄다.
+   겉모양도 선택지·정답 행과 같은 흰 알약에 회색 테두리다 — 3초 뒤 그 자리에 정답 행이
+   들어올 때 틀은 그대로고 내용만 바뀐다. 예전에는 분홍 점선 테두리에 연분홍 바탕이었는데,
+   그것은 「눌러서 채우는 빈칸」의 표시였다. 누르는 칸이 아니게 되면서 뜻을 잃었다.
+   누르는 칸이 아니니 손 모양도 hover 도 두지 않는다. 누를 수 있어 보이는데 눌러도
+   아무 일이 없으면 아이가 계속 누른다. */
 .name-slot {
-  min-height: var(--answer-h); border-radius: var(--radius-pill); border: 3px dashed var(--pink);
-  display: grid; place-items: center; cursor: pointer; user-select: none;
-  font-weight: 800; font-size: 22px; color: var(--pink); transition: .2s;
-  background: var(--pink-soft);
+  min-height: var(--answer-h); border-radius: var(--radius-pill); border: 2px solid var(--line);
+  display: grid; place-items: center; user-select: none;
+  font-weight: 800; font-size: 22px; color: var(--pink);
+  background: var(--card);
+  position: relative; overflow: hidden;   /* 아래 막대가 칸의 둥근 모서리에 맞게 잘린다 */
 }
-.name-slot:hover { background: #ffc9dd; }
 .name-slot .hint { font-size: 14px; font-weight: 700; opacity: .8; }
+/* 3초 카운트다운 막대 (보통·어려움). 칸 전체가 막대다 — 분홍이 왼쪽에서부터 빠져나가고,
+   다 빠지면 정답 행이 들어온다(js/quiz.js). 안에 가는 막대를 따로 넣지 않고 칸을 통째로
+   쓰는 것은 아이 눈에 크게 보이라고. 길이는 js 가 animation-duration 으로 덮어 넣는다 —
+   3초라는 숫자를 한 곳(COUNTDOWN_MS)에만 두려고. transform 이라 그리기 비용이 없고,
+   오른쪽 끝이 곧게 줄어드는 동안 왼쪽 끝은 칸의 곡선을 따른다(overflow: hidden). */
+.name-slot .countdown-fill {
+  position: absolute; inset: 0; background: var(--pink);
+  transform-origin: left center;
+}
+/* 그림이 나타나 카운트다운이 시작되면(js 가 .counting 을 단다) 그때부터 줄어든다.
+   그 전에는 가득 찬 채 서 있다 — 웹에서는 그림이 내려오는 데 한 박자가 걸리는데,
+   그림도 없이 시간이 새면 안 된다. */
+.name-slot.counting .countdown-fill { animation: countdown-drain 3s linear forwards; }
+@keyframes countdown-drain { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+/* 마이크로 들린 이름. 막대 한가운데 — 말하는 도중의 중간 결과도 바로 나온다(js/quiz.js).
+   색은 잉크색이다: 분홍 막대 위에도, 막대가 빠져나간 흰 바탕 위에도 읽혀야 하는데
+   흰색은 바탕에서, 진분홍은 막대 위에서 묻힌다. 잉크색은 둘 다에서 또렷하고,
+   그 자리에 곧 들어올 정답 이름과 같은 색이라 자리가 이어져 보인다.
+   크기·굵기는 칸의 것(이름 크기)을 그대로 물려받는다 — 폰에서 함께 줄어든다.
+   좌우를 마이크 폭만큼 비워 긴 이름이 마이크에 닿지 않게 한다 — 양쪽을 같이 비워야
+   가운데가 그대로다. */
+.name-slot .heard {
+  position: relative; z-index: 1;     /* 막대(absolute)보다 위에 그린다 */
+  max-width: 100%; padding: 0 48px; color: var(--ink); line-height: 1.2;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* 아직 들린 말이 없을 때 그 자리에서 남은 초를 세는 숫자. 같은 색이되 크게 — 삐 소리마다
+   3 → 2 → 1 로 바뀌며 살짝 튄다(count-pop). js 가 요소를 새로 갈아 끼워 다시 돌린다. */
+.name-slot .heard.num { font-size: 36px; font-weight: 900; line-height: 1; animation: count-pop .25s ease-out; }
+@keyframes count-pop { from { transform: scale(1.4); opacity: .3; } to { transform: none; opacity: 1; } }
+/* 마이크 단추. 검색창의 마이크 버튼(.mic-btn)과 같은 자리·같은 배색 — 오른쪽 끝, 흰 바탕에
+   회색 테두리, 듣는 동안 연분홍이 차고 같은 고리가 번진다(audio-pulse). 켜고 끄는 것은
+   대개 문제 화면이 알아서 하지만, 「싫어요」로 시작했거나 다른 페이지에 다녀와 꺼진 채
+   되살아났을 때 손으로 켜는 길이라 누를 수 있다 — 누르면 끄고 켠다(js/quiz.js 의 toggleMic).
+   3초가 되면 이 자리에 정답 행의 O 가 온다(.answer-row .mark). */
+.name-slot .slot-mic {
+  /* 알약 오른쪽 끝 반원의 한가운데에 세운다. 반원의 중심은 바깥 가장자리에서 높이의
+     절반(--answer-h / 2) 안쪽인데, absolute 는 테두리(2px) 안쪽을 기준으로 재므로 2를
+     빼고, 마이크의 반지름(--mic-size / 2)을 또 뺀 만큼이 right 다. 폰에서 칸이 낮아지면
+     함께 옮겨진다. */
+  position: absolute; right: calc(var(--answer-h) / 2 - 2px - var(--mic-size) / 2); top: 50%; transform: translateY(-50%); z-index: 1;
+  width: var(--mic-size); height: var(--mic-size); border-radius: 999px; padding: 0; font: inherit; cursor: pointer;
+  border: 2px solid var(--line); background: var(--card); color: var(--ink-soft);
+  display: grid; place-items: center; transition: .16s;
+}
+.name-slot .slot-mic:hover { border-color: var(--pink); color: var(--pink); }
+/* 세로 가운데 맞춤이 transform 이라 눌린 표시도 거기에 얹어야 자리가 안 튄다 (.mic-btn 과 같다) */
+.name-slot .slot-mic:active { transform: translateY(-50%) scale(0.92); }
+.name-slot .slot-mic svg { width: 16px; height: 16px; display: block; }
+.name-slot .slot-mic.listening {
+  border-color: var(--pink); background: var(--pink-soft); color: var(--pink);
+  animation: audio-pulse 1.1s ease-out infinite;
+}
 
 /* ===== 정답 행 =====
    정답이 공개되는 순간 나오는 줄. 보통·어려움은 이름 칸이 이 행으로 바뀌고,
@@ -500,6 +560,10 @@ a.rel-item:hover { transform: translateY(-2px); border-color: var(--pink); box-s
 .answer-row .rank-tags { justify-content: center; }
 .answer-row .rank-thumb,
 .answer-row .rank-body { transform: translateX(calc(var(--thumb-lead) / -2)); }
+/* 보통·어려움의 정답 행은 그림이 없다(js/quiz.js 의 noThumb) — 큰 그림이 바로 위에 있다.
+   그림 몫으로 옮기던 만큼도, 그림과 글 사이 간격도 없어야 이름이 정확히 가운데에 선다. */
+.answer-row.no-thumb { --thumb-lead: 0px; }
+.answer-row.no-thumb .rank-body { margin-left: 0; }
 /* transform 을 준 요소는 겹쳐 깐 링크(.rank-hit)보다 아래에 그려져, 그 안의
    읽어 주기 버튼이 링크에 덮여 눌리지 않게 된다. 글 묶음을 링크 위로 올리되
    클릭은 통과시키고, 버튼만 클릭을 받는다. */
@@ -514,11 +578,17 @@ a.rel-item:hover { transform: translateY(-2px); border-color: var(--pink); box-s
    태그가 들어갈 폭이 52px 줄었고, 폰에서는 157마리 중 71마리가 두 줄로 접혔다.
    글이 길어 O/X 자리까지 닿으면 그 위에 겹쳐 그려진다 — 접히는 것보다 낫다. */
 .answer-row .mark {
-  /* 행 오른쪽 끝에서 조금 안으로 들여 세운다. 행이 알약 모양이라 오른쪽 끝은
-     둥글게 말려 있어, 여백에 딱 맞추면 O 가 그 곡선에 닿아 눌린 듯 보인다. */
-  position: absolute; right: 26px; top: 50%; transform: translateY(-50%);
-  font-size: 34px; font-weight: 900; line-height: 1;
+  /* 마이크가 서 있던 자리 — 알약 오른쪽 끝 반원의 한가운데 — 에 세운다. 행 높이만 한
+     정사각형을 오른쪽 끝에 붙이고 그 안에 가운데 놓으면, 행 높이가 얼마든 정사각형의
+     중심이 곧 반원의 중심이다(테두리 1px 는 위아래·오른쪽에 똑같이 붙어 상쇄된다).
+     이름 칸의 마이크(.slot-mic)와 같은 점이라, 3초에 마이크가 O 로 바뀐 듯 보인다. */
+  position: absolute; top: 0; bottom: 0; right: 0; aspect-ratio: 1 / 1;
+  display: grid; place-items: center; pointer-events: none;
 }
+/* O 의 바깥 지름을 마이크 단추(--mic-size)와 같게 한다 — 둘이 같은 점에 서므로, 3초에 마이크가
+   같은 크기의 O 로 바뀐 듯 보인다. O 는 틀 24 중 바깥 지름 20 이라 틀을 그 1.2 배로 그린다.
+   X 는 같은 틀을 쓰므로 함께 커져 O 와 눈에 같은 크기를 지킨다(js/quiz.js 의 MARK_SVG). */
+.answer-row .mark svg { width: calc(var(--mic-size) * 1.2); height: calc(var(--mic-size) * 1.2); display: block; }
 /* 맞고 틀림은 O/X 만으로도 보이지만, 세 줄이 나란할 때 한눈에 갈리도록
    테두리와 바탕을 아주 옅게 물들인다 (차트 행의 짜임은 그대로 둔다). */
 .answer-row.correct { border-color: #9fe8d1; background: #f4fdfa; }
@@ -529,6 +599,29 @@ a.rel-item:hover { transform: translateY(-2px); border-color: var(--pink); box-s
 /* 난도 선택 화면 */
 .difficulty-screen { max-width: 430px; margin: 8px auto 0; display: grid; gap: 12px; }
 .difficulty-screen[hidden] { display: none; }   /* 위와 같은 이유 */
+/* 마이크 안내 팝업 — 보통·어려움을 고르면 허락 창이 뜨기 전에 난도 화면 위에 뜬다 (js/quiz.js).
+   <dialog> 를 showModal() 로 연다 — 가운데 자리와 맨 위 층은 브라우저가 잡아 주고, 뒤는
+   가림막(::backdrop)이 덮는다. 겉모양은 난도 칸과 같은 흰 카드다. 무엇을 허락하는지와 언제
+   꺼지는지만 적고, 단추 둘로 가른다.
+   안쪽 여백은 팝업이 아니라 내용(.pop-body)에 준다 — 내용이 팝업을 빈틈없이 덮어야, 팝업
+   자체가 눌린 것을 곧 바깥 가림막이 눌린 것으로 볼 수 있다(js 가 그때 닫는다).
+   [open] 이 없으면 숨긴다 — <dialog> 를 모르는 옛 브라우저에서도 미리 보이지 않는다. */
+.mic-pop {
+  width: min(360px, calc(100vw - 32px)); padding: 0;
+  border: 2px solid var(--line); border-radius: var(--radius);
+  background: var(--card); color: var(--ink); box-shadow: 0 24px 60px rgba(58, 43, 63, .28);
+}
+.mic-pop:not([open]) { display: none; }
+.mic-pop[open] { display: block; }
+.mic-pop::backdrop { background: rgba(58, 43, 63, .38); }
+/* 팝업은 열릴 때 초점을 받는 자리일 뿐 누르는 것이 아니라 테두리를 그리지 않는다 (js/quiz.js 의 showMicNote) */
+.mic-pop:focus { outline: none; }
+.mic-pop .pop-body { display: grid; justify-items: center; gap: 10px; padding: 24px 22px 20px; text-align: center; }
+.mic-pop .emoji { font-size: 40px; line-height: 1; }
+.mic-pop h2 { margin: 0; font-size: 19px; font-weight: 800; }
+/* 한글은 낱말 단위로 줄을 바꾼다(keep-all) — 좁은 폰에서 「맞/출」처럼 낱말 가운데가 끊겼다 */
+.mic-pop p { margin: 0; font-size: 15px; font-weight: 600; line-height: 1.6; color: var(--ink-soft); word-break: keep-all; }
+.mic-pop .quiz-btns { margin-top: 6px; flex-wrap: wrap; }
 .diff-card {
   display: flex; align-items: center; gap: 15px; padding: 18px 20px; text-align: left;
   background: var(--card); border: 2px solid var(--line); border-radius: var(--radius);
@@ -557,6 +650,10 @@ a.rel-item:hover { transform: translateY(-2px); border-color: var(--pink); box-s
 /* 고른 난도를 얹어 두는 자리. 난도 화면(.difficulty-screen)과 같은 폭·같은 칸이라
    고르기 전과 고른 뒤가 이어져 보인다. 누르면 난도 화면으로 돌아간다. */
 .mode-bar { max-width: 430px; margin: 0 auto 14px; display: grid; }
+/* 난도 칸이 자리를 옮기는 동안(js/quiz.js 의 moveCard) — 올린 효과와 그 전환을 끄고 누를 수도
+   없게 한다. 전환은 움직임보다 앞서서, 칸이 마우스 밑을 지나며 올린 상태가 되면 그 전환이
+   움직임을 덮어 칸이 한 번에 튀었다. */
+.diff-card.moving { transition: none; pointer-events: none; }
 
 /* 어려움: 실루엣 */
 .quiz-image.silhouette img, .quiz-image.silhouette svg { filter: brightness(0); transition: filter .35s; }
@@ -591,7 +688,9 @@ a.rel-item:hover { transform: translateY(-2px); border-color: var(--pink); box-s
   border: none; cursor: pointer; font-family: inherit; transition: .16s;
 }
 .btn-primary { background: var(--pink); color: #fff; box-shadow: var(--shadow); }
-.btn-primary:hover:not(:disabled) { background: #ff5697; transform: translateY(-2px); }
+/* 올리면 색만 짙어진다. 한때 2px 떠오르게 했는데, 마이크 안내 팝업에서 옆의 「싫어요」(흰 단추)는
+   가만히 있고 「좋아요」만 움직여 자리가 바뀐 것처럼 보였다 — 사이트 전체에서 뺐다. */
+.btn-primary:hover:not(:disabled) { background: #ff5697; }
 .btn-ghost { background: var(--card); color: var(--ink-soft); border: 2px solid var(--line); }
 .btn-ghost:hover:not(:disabled) { border-color: var(--purple); color: var(--purple); }
 /* 이름 맞추기의 「다음 티니핑」이 정답을 보기 전까지 잠겨 있다 (js/quiz.js).
@@ -909,7 +1008,6 @@ a.rel-item:hover { transform: translateY(-2px); border-color: var(--pink); box-s
   .rank-body { margin-left: 6px; }
   .quiz-stage { --answer-h: 68px; }     /* 그림 46 + 여백 10×2 + 테두리 1×2 */
   .answer-row { --thumb-lead: 52px; }   /* 그림 46 + 그림↔글 6 */
-  .answer-row .mark { right: 20px; }   /* 위와 같은 만큼 안으로 */
   .rank-no { width: 34px; --delta-h: 11px; }   /* 11 + 24 + 11 = 그림 높이(46) */
   .rank-no b { font-size: 24px; }
   .rank-name { font-size: 18px; }

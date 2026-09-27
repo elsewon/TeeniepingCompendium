@@ -54,15 +54,29 @@
       </button>
       <button class="diff-card" data-mode="normal">
         <span class="emoji">🍨</span>
-        <span class="txt"><span class="t">보통</span><span class="d">이름 가리기 · 눌러서 정답 확인</span></span>
+        <span class="txt"><span class="t">보통</span><span class="d">이름 가리기 · 3초 뒤 정답 공개</span></span>
         <span class="c" data-count="normal"></span>
       </button>
       <button class="diff-card" data-mode="hard">
         <span class="emoji">😎</span>
-        <span class="txt"><span class="t">어려움</span><span class="d">실루엣만 보고 맞히기 · 눌러서 정답 확인</span></span>
+        <span class="txt"><span class="t">어려움</span><span class="d">실루엣만 보고 맞히기 · 3초 뒤 정답 공개</span></span>
         <span class="c" data-count="hard"></span>
       </button>
     </div>
+
+    <!-- 마이크 안내 팝업. 보통·어려움을 고르면 허락 창이 뜨기 전에 난도 화면 위에 뜬다 (js/quiz.js). -->
+    <dialog class="mic-pop" id="micNote" aria-labelledby="micNoteTitle" tabindex="-1">
+      <div class="pop-body">
+        <span class="emoji" aria-hidden="true">🎤</span>
+        <h2 id="micNoteTitle">마이크를 켤게요</h2>
+        <p>마이크를 사용하면 티니핑 이름을 말해서 맞출 수 있습니다.
+           마이크를 끄려면 마이크 버튼을 누르거나 페이지를 벗어나면 됩니다.</p>
+        <div class="quiz-btns">
+          <button class="btn btn-ghost" id="micSkip" type="button">싫어요</button>
+          <button class="btn btn-primary" id="micOk" type="button">좋아요</button>
+        </div>
+      </div>
+    </dialog>
 
     <!-- 퀴즈 진행 화면 -->
     <div id="stage" hidden>
@@ -93,6 +107,7 @@
 
   <script src="data/teeniepings.js"></script>
   <script src="js/util.js"></script>
+  <script src="js/hear.js"></script>
   <script src="js/stats.js"></script>
   <script src="js/quiz.js"></script>
 </body>
