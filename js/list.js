@@ -138,11 +138,10 @@ function matches(t) {
 
 function cardHTML(t) {
   const gradeClass = ["로열", "레전드", "빌런"].includes(t.grade) ? "grade-" + t.grade : "";
-  const back = location.search ? "?from=" + encodeURIComponent(location.search) : "";
   // 카드 자체가 <a> 였을 때는 이름 옆에 읽어 주기 버튼을 둘 수 없었다 (링크 안의
   // 버튼). 인기 차트의 행처럼 카드를 <div> 로 두고 투명한 링크를 위에 겹쳐 깐다.
   return `<div class="card">
-    <a class="card-hit" href="${pingHref(t.id)}${back}" aria-label="${t.nameKo} 자세히 보기"></a>
+    <a class="card-hit" href="${pingHref(t.id)}" aria-label="${t.nameKo} 자세히 보기"></a>
     <div class="thumb">${imageMarkup(t, 260)}</div>
     <div class="body">
       <div class="name-row">

@@ -61,7 +61,7 @@ const FOOTER = section("footer").replace(/\s*<p class="stats"[\s\S]*?<\/p>/, "")
 /* ── 관계 목록 ───────────────────────────── */
 /* 예전에는 SVG 관계 그래프를 그렸다. 관계는 많아야 5개(0개가 118마리)라
  * 그래프로 얻는 것이 적고 자리만 크게 차지해, 마법·에피소드와 같은 칸에
- * 목록으로 넣는다. data-ping 은 page.js 가 ?from= 을 이어 붙일 표시.
+ * 목록으로 넣는다.
  *
  * 썸네일은 imageMarkup 을 쓰지 않고 <img> 를 직접 적는다. imageMarkup 은 그림이
  * 없을 때를 대비해 플레이스홀더 SVG(1.5KB)를 통째로 data-fallback 에 싣는데,
@@ -83,7 +83,7 @@ function relationsHTML(center) {
       (rel.label ? `<span class="rel-label">${esc(rel.label)}</span>` : "");
     // 개별 페이지끼리는 같은 폴더 안이라 파일 이름만 적으면 된다
     return `<li>${target
-      ? `<a class="rel-item" data-ping href="${encodeURIComponent(rel.id)}.html">${inner}</a>`
+      ? `<a class="rel-item" href="${encodeURIComponent(rel.id)}.html">${inner}</a>`
       : `<span class="rel-item is-off">${inner}</span>`}</li>`;
   }).join("");
   return `<ul class="rel-list">${items}</ul>`;
@@ -265,7 +265,6 @@ function page(t) {
 ${HEADER}
 
   <main class="wrap detail">
-    <a class="back-link" href="${UP}index.html"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5 8 12l7 7"/></svg>목록으로</a>
     <div class="detail-top">
       <!-- 목록 카드와 같은 짜임 — 그림 아래에 이름·태그 -->
       <div class="detail-card">

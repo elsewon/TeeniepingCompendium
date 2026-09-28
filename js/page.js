@@ -1,24 +1,11 @@
 /* ===== 개별 페이지(p/<id>.html) 보조 스크립트 =====
  *
- * 내용은 빌드 때 이미 다 그려져 있다(node tools/build-pages.mjs).
- * 여기서는 주소에 실려 온 검색·필터 상태(from)만 링크에 붙여 준다.
+ * 내용은 빌드 때 이미 다 그려져 있다(node tools/build-pages.mjs). 여기서는 좋아요만 맡는다.
  *
- * 목록에서 "3기 + 로열"로 걸러 보다가 한 마리를 눌러 들어오면
- * 그 상태가 ?from= 에 담겨 온다. 돌아가기·관계 목록 링크에 그대로 이어 붙여야
- * 뒤로 갔을 때 보던 목록이 유지된다.
+ * 한때 목록에서 걸어 둔 검색·필터 상태를 ?from= 으로 받아 「목록으로」 링크와 관계 목록 링크에
+ * 이어 붙였다. 「목록으로」 링크를 없애면서 그 값을 쓸 곳이 없어져 함께 걷어냈다 — 보던 목록은
+ * 브라우저의 뒤로 가기로 돌아간다(목록은 검색·필터를 주소에, 스크롤을 sessionStorage 에 남긴다).
  */
-(function () {
-  const from = new URLSearchParams(location.search).get("from");
-  if (!from || !from.startsWith("?")) return;
-
-  const back = document.querySelector(".back-link");
-  if (back) back.href = "../index.html" + from;
-
-  // 관계 목록의 다른 티니핑으로 넘어갈 때도 목록 상태를 들고 간다
-  document.querySelectorAll("[data-ping]").forEach((a) => {
-    a.href += "?from=" + encodeURIComponent(from);
-  });
-})();
 
 /* ===== 좋아요 =====
  *
