@@ -49,23 +49,23 @@
     <div class="difficulty-screen" id="difficultyScreen">
       <button class="diff-card" data-mode="easy">
         <span class="emoji">🍭</span>
-        <span class="txt"><span class="t">쉬움</span><span class="d">이미지 보고 이름 선택지 3개 중 고르기</span></span>
+        <span class="txt"><span class="t">쉬움</span><span class="d">선택지 3개 중에 고르기</span></span>
         <span class="c" data-count="easy"></span>
       </button>
       <button class="diff-card" data-mode="normal">
         <span class="emoji">🍨</span>
-        <span class="txt"><span class="t">보통</span><span class="d">이름 가리기 · 3초 뒤 정답 공개</span></span>
+        <span class="txt"><span class="t">보통</span><span class="d">3초 안에 맞추기</span></span>
         <span class="c" data-count="normal"></span>
       </button>
       <button class="diff-card" data-mode="hard">
         <span class="emoji">😎</span>
-        <span class="txt"><span class="t">어려움</span><span class="d">실루엣만 보고 맞히기 · 3초 뒤 정답 공개</span></span>
+        <span class="txt"><span class="t">어려움</span><span class="d">실루엣 보고 3초 안에 맞추기</span></span>
         <span class="c" data-count="hard"></span>
       </button>
     </div>
 
     <!-- 마이크 안내 팝업. 보통·어려움을 고르면 허락 창이 뜨기 전에 난도 화면 위에 뜬다 (js/quiz.js). -->
-    <dialog class="mic-pop" id="micNote" aria-labelledby="micNoteTitle" tabindex="-1">
+    <dialog class="pop" id="micNote" aria-labelledby="micNoteTitle" tabindex="-1">
       <div class="pop-body">
         <span class="emoji" aria-hidden="true">🎤</span>
         <h2 id="micNoteTitle">마이크를 켤게요</h2>
@@ -74,6 +74,20 @@
         <div class="quiz-btns">
           <button class="btn btn-ghost" id="micSkip" type="button">싫어요</button>
           <button class="btn btn-primary" id="micOk" type="button">좋아요</button>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- 읽어 주기 안내 팝업. 쉬움을 고르면 문제 화면으로 넘어가기 전에 난도 화면 위에 뜬다 (js/quiz.js). -->
+    <dialog class="pop" id="speakNote" aria-labelledby="speakNoteTitle" tabindex="-1">
+      <div class="pop-body">
+        <span class="emoji" aria-hidden="true">🔊</span>
+        <h2 id="speakNoteTitle">선택지를 읽어줄게요</h2>
+        <p>문제가 나올 때마다 선택지 3개의 이름을 차례로 읽어 줍니다.
+           아니면 이름 옆 스피커 버튼을 하나하나 눌러서 들을 수 있습니다.</p>
+        <div class="quiz-btns">
+          <button class="btn btn-ghost" id="speakSkip" type="button">싫어요</button>
+          <button class="btn btn-primary" id="speakOk" type="button">좋아요</button>
         </div>
       </div>
     </dialog>

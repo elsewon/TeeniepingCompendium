@@ -582,29 +582,29 @@ a.rel-item:hover { transform: translateY(-2px); border-color: var(--pink); box-s
 /* 난도 선택 화면 */
 .difficulty-screen { max-width: 430px; margin: 8px auto 0; display: grid; gap: 12px; }
 .difficulty-screen[hidden] { display: none; }   /* 위와 같은 이유 */
-/* 마이크 안내 팝업 — 보통·어려움을 고르면 허락 창이 뜨기 전에 난도 화면 위에 뜬다 (js/quiz.js).
-   <dialog> 를 showModal() 로 연다 — 가운데 자리와 맨 위 층은 브라우저가 잡아 주고, 뒤는
-   가림막(::backdrop)이 덮는다. 겉모양은 난도 칸과 같은 흰 카드다. 무엇을 허락하는지와 언제
-   꺼지는지만 적고, 단추 둘로 가른다.
+/* 안내 팝업 — 마이크(보통·어려움)와 선택지 읽어 주기(쉬움). 난도를 고르면 문제 화면으로 넘어가기
+   전에 난도 화면 위에 뜬다 (js/quiz.js 의 openPop). <dialog> 를 showModal() 로 연다 — 가운데 자리와
+   맨 위 층은 브라우저가 잡아 주고, 뒤는 가림막(::backdrop)이 덮는다. 겉모양은 난도 칸과 같은 흰
+   카드다. 묻는 것만 짧게 적고, 단추 둘(싫어요·좋아요)로 가른다.
    안쪽 여백은 팝업이 아니라 내용(.pop-body)에 준다 — 내용이 팝업을 빈틈없이 덮어야, 팝업
    자체가 눌린 것을 곧 바깥 가림막이 눌린 것으로 볼 수 있다(js 가 그때 닫는다).
    [open] 이 없으면 숨긴다 — <dialog> 를 모르는 옛 브라우저에서도 미리 보이지 않는다. */
-.mic-pop {
+.pop {
   width: min(360px, calc(100vw - 32px)); padding: 0;
   border: 2px solid var(--line); border-radius: var(--radius);
   background: var(--card); color: var(--ink); box-shadow: 0 24px 60px rgba(58, 43, 63, .28);
 }
-.mic-pop:not([open]) { display: none; }
-.mic-pop[open] { display: block; }
-.mic-pop::backdrop { background: rgba(58, 43, 63, .38); }
-/* 팝업은 열릴 때 초점을 받는 자리일 뿐 누르는 것이 아니라 테두리를 그리지 않는다 (js/quiz.js 의 showMicNote) */
-.mic-pop:focus { outline: none; }
-.mic-pop .pop-body { display: grid; justify-items: center; gap: 10px; padding: 24px 22px 20px; text-align: center; }
-.mic-pop .emoji { font-size: 40px; line-height: 1; }
-.mic-pop h2 { margin: 0; font-size: 19px; font-weight: 800; }
+.pop:not([open]) { display: none; }
+.pop[open] { display: block; }
+.pop::backdrop { background: rgba(58, 43, 63, .38); }
+/* 팝업은 열릴 때 초점을 받는 자리일 뿐 누르는 것이 아니라 테두리를 그리지 않는다 (js/quiz.js 의 openPop) */
+.pop:focus { outline: none; }
+.pop .pop-body { display: grid; justify-items: center; gap: 10px; padding: 24px 22px 20px; text-align: center; }
+.pop .emoji { font-size: 40px; line-height: 1; }
+.pop h2 { margin: 0; font-size: 19px; font-weight: 800; }
 /* 한글은 낱말 단위로 줄을 바꾼다(keep-all) — 좁은 폰에서 「맞/출」처럼 낱말 가운데가 끊겼다 */
-.mic-pop p { margin: 0; font-size: 15px; font-weight: 600; line-height: 1.6; color: var(--ink-soft); word-break: keep-all; }
-.mic-pop .quiz-btns { margin-top: 6px; flex-wrap: wrap; }
+.pop p { margin: 0; font-size: 15px; font-weight: 600; line-height: 1.6; color: var(--ink-soft); word-break: keep-all; }
+.pop .quiz-btns { margin-top: 6px; flex-wrap: wrap; }
 .diff-card {
   display: flex; align-items: center; gap: 15px; padding: 18px 20px; text-align: left;
   background: var(--card); border: 2px solid var(--line); border-radius: var(--radius);

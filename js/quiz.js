@@ -73,11 +73,18 @@ function startMode(m) {
   mode = m;
   wakeAudio();             // 누른 흐름 안에서 — 사파리는 그래야 뒤에 시간으로 내는 비프를 들려준다
   primeSpeech();           // 음성 합성기도 — iOS 는 첫 발화가 누른 흐름 안이어야 3초 뒤 정답 읽기를 허용한다
-  if (MODES[m].choices) { stopHearing(); showStage(); nextQuestion(); return; }
+  if (MODES[m].choices) {
+    stopHearing();
+    // 쉬움: 선택지 이름을 읽어 줄지 먼저 묻는다 — 이번 방문에 한 번. 음성 합성이 없는 브라우저는
+    // 읽을 수 없으니 묻지 않는다.
+    if (readChoices === null && window.speechSynthesis) { openPop(speakNote); return; }
+    startEasy();
+    return;
+  }
   // 보통·어려움: 허락 창이 뜨기 전에 마이크 안내를 팝업으로 먼저 보여 준다 — 무엇을 허락하는지,
   // 언제 꺼지는지. 이미 허락된 기기(브라우저가 알려 주는 경우)나 이번 방문에서 이미 답한 뒤에는
   // 곧바로 간다. 마이크는 「좋아요」를 누른 그 흐름 안에서 켠다(사파리).
-  if (!micExplained && !micGranted && !mic.dead && recognitionClass()) { showMicNote(); return; }
+  if (!micExplained && !micGranted && !mic.dead && recognitionClass()) { openPop(micNote); return; }
   listenAndStart();
 }
 
@@ -93,38 +100,40 @@ function listenAndStart() {
   else if (mic.settled) settleMic();     // 이미 켜져 있으면 바로 넘어간다
 }
 
-/* 마이크 안내 — 난도 화면 위에 팝업(quiz.html 의 #micNote, <dialog>)으로 띄운다. showModal() 은
-   뒤를 가리고 초점을 팝업 안에 가두며 Esc 로 닫힌다. 「좋아요」는 그 흐름에서 마이크를 켜고
-   (사파리는 누른 흐름 안에서만 허락을 묻는다), 「싫어요」는 마이크를 끈 채로 바로 문제로
-   간다 — 허락 창이 뜨지 않고, 마이크 단추는 회색으로 남아 누르면 그때 켠다(아직 묻지 않았으니
-   허락 창이 뜬다). 바깥(가림막)을 누르거나 Esc 로 닫으면 아무것도
-   시작하지 않고 난도 화면에 남는다. 그때는 고른 것이 아니므로 다음에 난도를 고를 때 다시 묻고,
-   둘 중 하나를 고른 뒤에는 이번 방문 동안 다시 묻지 않는다. */
+/* 안내 팝업 둘 — 마이크(보통·어려움, #micNote)와 선택지 읽어 주기(쉬움, #speakNote). 난도를 고르면
+   문제 화면으로 넘어가기 전에 난도 화면 위에 <dialog> 로 띄운다. showModal() 은 뒤를 가리고 초점을
+   팝업 안에 가두며 Esc 로 닫힌다. 바깥(가림막)을 누르거나 Esc 로 닫으면 아무것도 시작하지 않고
+   난도 화면에 남는다. 그때는 고른 것이 아니므로 다음에 그 난도를 고를 때 다시 묻고, 둘 중
+   하나를 고른 뒤에는 이번 방문 동안 다시 묻지 않는다. */
+function openPop(dlg) {
+  if (typeof dlg.showModal === "function") dlg.showModal();
+  else dlg.setAttribute("open", "");   // <dialog> 를 모르는 옛 브라우저 — 가림막 없이 뜬다
+  // 초점은 단추가 아니라 팝업 자체에 둔다. showModal() 은 첫 단추에 초점을 주는데, 사파리는
+  // 그 단추에 파란 초점 링을 그려 미리 골라진 것처럼 보였다. 팝업에 두면 어느 쪽도 골라져
+  // 보이지 않고, 키보드로는 Tab 으로 단추에 가고 Esc 로 닫는다. 화면 낭독기는 팝업의
+  // 제목(aria-labelledby)을 읽는다.
+  dlg.focus({ preventScroll: true });
+}
+function closePop(dlg) {
+  if (typeof dlg.close === "function") dlg.close();
+  else dlg.removeAttribute("open");
+}
+
+/* 마이크 안내 — 「좋아요」는 그 흐름에서 마이크를 켜고(사파리는 누른 흐름 안에서만 허락을 묻는다),
+   「싫어요」는 마이크를 끈 채로 바로 문제로 간다 — 허락 창이 뜨지 않고, 마이크 단추는 회색으로
+   남아 누르면 그때 켠다(아직 묻지 않았으니 허락 창이 뜬다). */
 let micExplained = false;   // 이번 방문에서 안내에 답했다
 let micGranted = false;     // 브라우저가 마이크가 이미 허락됐다고 알려 줬다 (Permissions API)
 const micNote = document.getElementById("micNote");
-function showMicNote() {
-  if (typeof micNote.showModal === "function") micNote.showModal();
-  else micNote.setAttribute("open", "");   // <dialog> 를 모르는 옛 브라우저 — 가림막 없이 뜬다
-  // 초점은 단추가 아니라 팝업 자체에 둔다. showModal() 은 첫 단추에 초점을 주는데, 사파리는
-  // 그 단추에 파란 초점 링을 그려 「좋아요」가 미리 골라진 것처럼 보였다. 팝업에 두면 어느
-  // 쪽도 골라져 보이지 않고, 키보드로는 Tab 으로 단추에 가고 Esc 로 닫는다. 화면 낭독기는
-  // 팝업의 제목(aria-labelledby)을 읽는다.
-  micNote.focus({ preventScroll: true });
-}
-function hideMicNote() {
-  if (typeof micNote.close === "function") micNote.close();
-  else micNote.removeAttribute("open");
-}
 document.getElementById("micOk").addEventListener("click", () => {
   micExplained = true;
-  hideMicNote();
+  closePop(micNote);
   wakeAudio();               // 이 흐름에서도 깨워 둔다 — 안내를 읽는 동안 세워졌을 수 있다
   listenAndStart();
 });
 document.getElementById("micSkip").addEventListener("click", () => {
   micExplained = true;
-  hideMicNote();
+  closePop(micNote);
   // 끈 채로 간다 — 허락 창도 뜨지 않는다. 접는 것(giveUpMic)과 달리 단추는 남긴다: 브라우저는
   // 아직 마이크를 묻지 않았으므로, 나중에 단추를 누르면 그때 허락 창이 뜨고 켜진다.
   mic.off = true;
@@ -132,9 +141,33 @@ document.getElementById("micSkip").addEventListener("click", () => {
   showStage();
   nextQuestion();
 });
+
+/* 선택지 읽어 주기 안내 — 쉬움. 「좋아요」면 문제가 나올 때마다 선택지 셋을 차례로 읽어 주고
+   (renderChoices), 「싫어요」면 읽지 않는다 — 이름 옆 스피커 버튼으로는 언제든 들을 수 있다.
+   고른 뒤 정답 이름을 읽어 주는 것은 어느 쪽이든 그대로다. 「좋아요」를 누른 흐름에서 곧바로
+   첫 문제를 내므로, 이어 읽기가 그 흐름 안에서 엔진을 깨운다(iOS — js/util.js 의 primeSpeech). */
+let readChoices = null;     // 이번 방문의 답 — null 이면 아직 묻지 않았다
+const speakNote = document.getElementById("speakNote");
+function startEasy() {
+  showStage();
+  nextQuestion();
+}
+document.getElementById("speakOk").addEventListener("click", () => {
+  readChoices = true;
+  closePop(speakNote);
+  startEasy();
+});
+document.getElementById("speakSkip").addEventListener("click", () => {
+  readChoices = false;
+  closePop(speakNote);
+  startEasy();
+});
+
 // 바깥(가림막)을 누르면 닫는다. 내용(.pop-body)이 팝업을 빈틈없이 덮으므로, 팝업 자체가
 // 눌렸다면 그것은 가림막이다 (가림막의 클릭은 팝업 요소로 온다).
-micNote.addEventListener("click", (e) => { if (e.target === micNote) hideMicNote(); });
+[micNote, speakNote].forEach((dlg) => {
+  dlg.addEventListener("click", (e) => { if (e.target === dlg) closePop(dlg); });
+});
 /* 이미 허락된 기기인지 미리 물어 둔다 — 그러면 안내를 건너뛴다. 사파리는 이 이름을 모를 수
    있는데(throw 나 reject), 그러면 모른다고 보고 안내를 보인다. */
 if (navigator.permissions && navigator.permissions.query) {
@@ -848,11 +881,13 @@ function renderChoices() {
 
   // 선택지 셋을 텀을 두고 차례로 읽어 준다 — 한글을 아직 못 읽는 아이도 보기를 귀로
   // 훑고 고르도록. 읽는 동안에는 그 선택지의 버튼이 펄스로 뛰어, 지금 어느 이름을
-  // 읽는지 눈으로도 따라갈 수 있다.
-  speakSeries(btns.map((b) => ({
-    text: b.querySelector(".choice-name").textContent,
-    btn: b.querySelector("[data-speak]"),
-  })));
+  // 읽는지 눈으로도 따라갈 수 있다. 쉬움을 고를 때 「좋아요」라고 한 경우에만이다(readChoices).
+  if (readChoices) {
+    speakSeries(btns.map((b) => ({
+      text: b.querySelector(".choice-name").textContent,
+      btn: b.querySelector("[data-speak]"),
+    })));
+  }
   let settled = false;
 
   const pick = (btn, e) => {
