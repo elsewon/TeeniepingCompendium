@@ -393,22 +393,22 @@ function cors(origin, env) {
   };
 }
 
-/* ===== 읽기는 엣지에 캐시한다 =====
+/* ===== 읽기도 Durable Object 에서 바로 받는다 =====
  *
  * 재 보니 세는 일(Durable Object 안)은 늘 0~1ms 로 끝나는데, 그 DO 에 "닿는" 데만
  * 0.2초에서 10초까지 걸렸다 (요청 셋 중 하나꼴로 1초 넘음). 이 사이트는 방문이
  * 하루 십수 번뿐이라 DO 가 거의 늘 잠들어 있고, 깨우는 값을 방문자가 그대로 문다.
  *
- * 그래서 읽기 응답을 엣지에 두고, 만료돼도 일단 그것을 내준 뒤 뒤에서 새로 받아
- * 채워 넣는다(stale-while-revalidate). 짧은 캐시만으로는 소용이 없다 — 방문 사이가
- * 평균 한 시간이 넘어 다음 사람이 올 때는 이미 비어 있기 때문이다. 묵은 것이라도
- * 즉시 내주어야 아무도 DO 를 깨우느라 기다리지 않는다.
- *
- * 세는 일(POST /hit)은 캐시하지 않는다. 그래서 세션 첫 페이지는 늘 최신을 본다 —
- * 뒤처지는 것은 "그 사이 남이 올린 숫자" 뿐이다. */
-const READ_PATHS = ["/stats", "/rank", "/series", "/refs"];
-const FRESH_MS = 60 * 1000;              // 이 안이면 그대로 내준다
-const STALE_MS = 24 * 60 * 60 * 1000;    // 이보다 묵으면 새로 받아 온다
+ * 그래서 한때 읽기 응답을 엣지에 캐시했었다(stale-while-revalidate — 묵어도 일단 내주고
+ * 뒤에서 갱신). 2026년 10월에 뺐다. 이 Worker 는 workers.dev 주소에서 도는데, Cloudflare
+ * 문서에는 *.workers.dev 배포에서는 Cache API 가 아무 효과가 없다고 되어 있고, 재 보니 실제로도
+ * 들쭉날쭉했다 — 새 주소를 3초 간격으로 물으니 MISS → HIT → MISS, /stats 는 2초 간격으로 두 번 다
+ * STALE(뒤에서 채워 넣은 것이 다음 요청에 보이지 않음). 맞을 때는 묵은 숫자를 내주었다 — 좋아요를
+ * 누르고 곧 새로고침하면 누르기 전에 캐시된 숫자로 돌아가 보였다. 그래서 읽기도 늘 새로 받는다.
+ * DO 가 잠들어 있으면 가끔 몇 초 걸리지만, 화면은 5초에서 끊고(js/util.js 의 timeoutSignal)
+ * 숫자만 비워 둔다. Worker 에 개인 도메인을 붙이면 Cache API 가 제대로 도니 그때 다시 생각한다
+ * (캐시 코드는 git 기록에 있다). */
+const PATHS = ["/hit", "/stats", "/rank", "/series", "/refs"];
 
 /** 카운터는 하나뿐이므로 항상 같은 이름의 객체를 쓴다 */
 function askCounter(url, env) {
@@ -416,56 +416,8 @@ function askCounter(url, env) {
   return stub.fetch(new Request(url.toString(), { method: "GET" }));
 }
 
-/** 캐시에 둘 사본. 만든 시각을 함께 적어 두고 그것으로 신선도를 잰다 —
-    Cache-Control 만으로는 "묵어도 일단 내주기" 를 다룰 수 없다. */
-async function freshCopy(url, env, cache, key) {
-  const res = await askCounter(new URL(key.url), env);
-  const body = await res.text();
-  const copy = new Response(body, {
-    status: res.status,
-    headers: {
-      "Content-Type": "application/json",
-      "Cache-Control": `max-age=${STALE_MS / 1000}`,
-      "x-made-at": String(Date.now()),
-    },
-  });
-  if (res.ok) await cache.put(key, copy.clone());
-  return copy;
-}
-
-async function readCached(url, env, ctx, headers) {
-  const cache = caches.default;
-
-  /* 통계 페이지는 숫자를 확인하러 들어가는 곳이라 묵은 값을 주면 안 된다.
-     fresh=1 이면 캐시를 읽지 않고 새로 받아 온다 (받아 온 것은 캐시에 넣어 둔다 —
-     그 덕에 다른 방문자는 빨라진다).
-     열쇠에서는 fresh 를 뺀다. 그러지 않으면 fresh=1 요청이 딴 칸에 쌓여
-     보통 요청과 서로 남의 것을 못 본다. */
-  const fresh = url.searchParams.get("fresh") === "1";
-  const keyUrl = new URL(url.toString());
-  keyUrl.searchParams.delete("fresh");
-  const key = new Request(keyUrl.toString(), { method: "GET" });
-  /* x-cache 는 진단용이다 — 느린 응답이 정말 캐시를 못 맞힌 것인지 보려면
-     밖에서 알아볼 길이 있어야 한다 (HIT 신선 · STALE 묵었지만 즉시 내줌 · MISS 새로 받음) */
-  const send = (res, mark) => new Response(res.body, {
-    status: res.status,
-    headers: { ...headers, "Content-Type": "application/json", "x-cache": mark },
-  });
-
-  const hit = fresh ? null : await cache.match(key);
-  if (hit) {
-    const age = Date.now() - Number(hit.headers.get("x-made-at") || 0);
-    if (age < STALE_MS) {
-      // 묵었으면 내주고 나서 뒤에서 갱신한다 (기다리게 하지 않는다)
-      if (age > FRESH_MS) ctx.waitUntil(freshCopy(url, env, cache, key));
-      return send(hit, age > FRESH_MS ? "STALE" : "HIT");
-    }
-  }
-  return send(await freshCopy(url, env, cache, key), "MISS");
-}
-
 export default {
-  async fetch(request, env, ctx) {
+  async fetch(request, env) {
     const url = new URL(request.url);
     const origin = request.headers.get("Origin") || "";
     const headers = cors(origin, env);
@@ -473,7 +425,7 @@ export default {
     if (request.method === "OPTIONS") {
       return new Response(null, { headers });
     }
-    if (!["/hit", "/stats", "/rank", "/series", "/refs"].includes(url.pathname)) {
+    if (!PATHS.includes(url.pathname)) {
       return new Response("not found", { status: 404, headers });
     }
     // 세는 것은 우리 사이트에서 온 POST 만 허용한다 (읽기는 누구나 가능)
@@ -484,10 +436,6 @@ export default {
       if (!isAllowed(origin, env)) {
         return new Response("forbidden", { status: 403, headers });
       }
-    }
-
-    if (READ_PATHS.includes(url.pathname)) {
-      return readCached(url, env, ctx, headers);
     }
 
     const res = await askCounter(url, env);

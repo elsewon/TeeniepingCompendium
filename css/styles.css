@@ -426,7 +426,10 @@ a.rel-item:hover { transform: translateY(-2px); border-color: var(--pink); box-s
 
 /* ===== 퀴즈 페이지 ===== */
 .quiz { padding-block: 26px 70px; text-align: center; }   /* 좌우는 .wrap 이 담당 */
-.quiz h1 { font-size: 30px; margin: 0 0 6px; }
+/* 페이지 제목 — 이름 맞추기·인기 차트·방문 통계가 같은 지정값을 쓴다(폰은 아래에서 24px).
+   인기 차트·통계는 한때 브라우저 기본(32px, 폰도 32px)에 맡겼는데, 폰에서 줄일 수 없고 이름 맞추기와
+   크기가 엇갈렸으며 브라우저가 기본값을 바꾸면 따라 바뀐다. 공룡 도감도 같은 값이다. */
+.quiz h1, .rank h1, .chart-page h1 { font-size: 30px; margin: 0 0 6px; }
 .quiz .sub { color: var(--ink-soft); font-weight: 600; margin: 0 0 8px; }
 /* 난도 칸·문제 칸·인기 차트 행이 모두 430px 이다. 세 화면을 오갈 때 같은 폭이라
    내용만 바뀌고 틀은 그대로 있는 것처럼 보인다 (.difficulty-screen · .mode-bar · .rank-cols). */
@@ -947,6 +950,8 @@ a.rel-item:hover { transform: translateY(-2px); border-color: var(--pink); box-s
   font-weight: 800; font-variant-numeric: tabular-nums;
 }
 .inflow-list .empty { display: block; padding: 18px 0; }
+/* 맨 위에 고정한 공유 링크(js/chart.js) — 많은 순으로 선 나머지와 가는 금으로 가른다 */
+.inflow-list li.pinned { border-bottom: 1px solid var(--line); padding-bottom: 10px; margin-bottom: 4px; }
 
 /* ===== 반응형 ===== */
 @media (max-width: 720px) {
@@ -990,7 +995,7 @@ a.rel-item:hover { transform: translateY(-2px); border-color: var(--pink); box-s
 
   /* 퀴즈 */
   .quiz { padding-block: 18px 50px; }
-  .quiz h1 { font-size: 24px; }
+  .quiz h1, .rank h1, .chart-page h1 { font-size: 24px; }
   .quiz-stage { padding: 18px; }
   .diff-card { padding: 15px 16px; gap: 12px; }
   .diff-card .emoji { font-size: 26px; }
