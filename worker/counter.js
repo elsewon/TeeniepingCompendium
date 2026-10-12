@@ -20,7 +20,8 @@
  * 하한값인데 얼마나 모자란지도 알 길이 없었다 — 브라우저 자체 공유나 주소창 복사는
  * 사이트의 js 를 거치지 않는다. 통계 페이지와 인기 차트에서 차례로 뺐다.
  * 쌓여 있던 `:share` 열쇠는 임시 코드로 한 번 지우고 그 코드는 뺐다.
- * 공유 버튼과 방문 경로(_share)는 그대로다.
+ * 나중에는 공유 버튼도 없앴고, 버튼을 거친 링크를 따로 세던 방문 경로의 _share 도
+ * 이제 받지 않는다(아래 cleanHost).
  *
  * 좋아요는 개별 티니핑에만 있다. 방문과 달리 사람이 스스로 누르는 값이라
  * 브라우저(localStorage)에 표시를 남겨 한 기기당 한 마리에 한 번만 오른다.
@@ -84,13 +85,14 @@ const PAGE_KINDS = ["visit", "like"];
 const SCORE = { like: 10, visit: 1 };
 const totalScore = (row) =>
   PAGE_KINDS.reduce((sum, kind) => sum + SCORE[kind] * (row[kind] || 0), 0);
-/* 방문 경로는 주소(호스트)를 그대로 열쇠에 쓴다. 공유 버튼을 거친 링크는
-   주소가 없으므로 _share 로 대신한다.
+/* 방문 경로는 주소(호스트)를 그대로 열쇠에 쓴다.
    리퍼러가 없는 방문(_direct)은 세지 않는다 — 브라우저도 보내지 않고(js/stats.js)
    여기서도 받지 않는다. 옛 js 가 캐시에 남은 브라우저가 보내더라도 조용히
    흘려보낸다(세지 않을 뿐 오류는 아니다).
    날짜별로만 쌓고(ref:d:<날짜>:<주소>) 조회할 때 최근 N일을 합친다 —
-   달력 주·달로 쌓으면 "최근 7일" 같은 구간을 만들 수 없다. */
+   달력 주·달로 쌓으면 "최근 7일" 같은 구간을 만들 수 없다.
+   공유 버튼이 있던 때는 그 버튼을 거쳐 리퍼러 없이 들어온 링크를 _share 로 셌다. 버튼을 없애며
+   받지 않게 했다 — 쌓여 있던 _share 열쇠는 지우지 않고 두되 /refs 가 내보내지 않는다. */
 
 /** 열쇠에 넣어도 되는 주소인지 — 아무 문자열이나 받으면 저장소가 지저분해진다.
     점으로 나뉜 마디가 둘 이상이고, 각 마디는 영숫자로 시작·끝나야 한다. */
@@ -99,7 +101,6 @@ const HOST_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)
 function cleanHost(value) {
   if (!value) return null;
   const v = String(value).toLowerCase();
-  if (v === "_share") return v;
   return v.length <= 63 && HOST_RE.test(v) ? v : null;
 }
 
@@ -161,7 +162,8 @@ export class Counter {
       for (const [key, value] of await this.ctx.storage.list(
         { start: `ref:d:${from}`, end: `ref:d:${after}` })) {
         const host = key.split(":")[3];
-        if (host) totals.set(host, (totals.get(host) || 0) + value);
+        // 주소 꼴인 것만 — 예전에 세던 _share 는 저장소에 남아 있어도 내보내지 않는다
+        if (host && HOST_RE.test(host)) totals.set(host, (totals.get(host) || 0) + value);
       }
       const rows = [...totals.entries()].map(([host, n]) => ({ host, n }))
         .sort((a, b) => b.n - a.n)

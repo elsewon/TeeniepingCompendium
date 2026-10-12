@@ -12,11 +12,10 @@
  *
  * 공유는 세지 않는다. 셀 수 있는 것이 사이트의 공유 버튼을 거친 것뿐이라 실제 공유의
  * 하한값인데 얼마나 모자란지도 알 길이 없어, 통계 페이지와 인기 차트에서 차례로 뺐다.
- * 공유 버튼은 그대로 있고, 그 버튼이 붙이는 ?s=1 표식도 그대로다 — 방문 경로는
- * 그 표식을 쓴다(아래 referralHost).
+ * 나중에는 공유 버튼도 없앴다 — 상단 바의 그 자리에는 이제 공룡 도감으로 가는 링크가 있다.
  *
  * 아래 STATS_API 가 비어 있으면 아무 요청도 보내지 않고 통계 줄도 나타나지 않는다.
- * Worker 를 배포한 뒤 그 주소를 넣으면 켜진다. (README 의 "방문·공유 통계" 참고)
+ * Worker 를 배포한 뒤 그 주소를 넣으면 켜진다. (README 의 "방문·좋아요 통계" 참고)
  */
 const STATS_API = "https://teenieping-counter.elsewon.workers.dev";
 
@@ -101,39 +100,26 @@ function alreadyVisited() {
 }
 
 /* ===== 방문 경로 =====
-   어디를 거쳐 들어왔는지 한 세션에 한 번만 센다.
+   어디를 거쳐 들어왔는지 한 세션에 한 번만, 리퍼러의 주소(호스트)로 센다.
 
-   리퍼러가 있으면 그 주소(호스트)를 쓴다. 공유 버튼이 붙인 ?s=1 표식이 함께 있어도
-   주소 쪽을 택한다 — "공유로 들어왔다" 보다 "어디에 올린 링크였나" 가 더 알 만하고,
-   공유였다는 것은 표식 없이도 그 주소를 보면 대개 짐작이 된다.
+   사이트 안에서 넘어온 것은 세지 않는다 — 밖에서 들어온 것만 방문 경로다. 같은 주소(github.io)에
+   있는 공룡 도감에서 넘어온 것도 여기서는 안으로 친다(상단 바의 공룡 도감 링크로 오가는 것도).
 
-   그래서 _share 는 "공유 버튼을 거쳤는데 어디서 왔는지 알 길이 없는 경우" 가 된다.
-   카카오톡 같은 인앱 브라우저가 리퍼러를 안 보내므로 메신저 유입이 여기 모인다.
+   리퍼러가 없으면(앱·북마크·주소 입력, 리퍼러를 보내지 않는 카카오톡 같은 인앱 브라우저)
+   세지 않는다 — 어디서 왔는지 알려 주는 것이 없어 목록에 쓸 데가 없다.
 
-   사이트 안에서 넘어온 것은 표식이 붙어 있어도 세지 않는다 — 밖에서 들어온 것만
-   방문 경로다. 공유 링크를 우리 페이지 안에서 눌러 봐야 새 방문자가 온 것이 아니다.
-
-   리퍼러도 표식도 없으면(앱·북마크·주소 입력) 역시 세지 않는다 — 어디서 왔는지
-   알려 주는 것이 없어 목록에 쓸 데가 없다. */
+   공유 버튼이 있던 때는 그 버튼이 링크에 붙인 ?s=1 표식으로, 리퍼러 없이 들어온 공유 링크를
+   「공유 링크」 로 따로 셌다. 버튼과 함께 없앴다 — 옛 링크에 표식이 남아 있어도 읽지 않는다. */
 function referralHost() {
   const r = document.referrer;
-  if (r) {
-    try {
-      const host = new URL(r).host.toLowerCase().replace(/^www\./, "");
-      const self = location.host.toLowerCase().replace(/^www\./, "");
-      return host === self ? null : host;      // 안에서 온 것이면 여기서 끝
-    } catch { /* 주소가 망가졌으면 아래 표식으로 넘어간다 */ }
+  if (!r) return null;
+  try {
+    const host = new URL(r).host.toLowerCase().replace(/^www\./, "");
+    const self = location.host.toLowerCase().replace(/^www\./, "");
+    return host === self ? null : host;      // 안에서 온 것이면 세지 않는다
+  } catch {
+    return null;                              // 주소가 망가졌으면 어디서 왔는지 모른다
   }
-  return new URLSearchParams(location.search).get("s") === "1" ? "_share" : null;
-}
-
-/* 표식을 주소에 남겨 두면 받은 사람이 그 주소를 다시 공유하거나 북마크할 때
-   계속 공유 유입으로 잡힌다. 세고 난 뒤 조용히 지운다. */
-function dropShareMark() {
-  const url = new URL(location.href);
-  if (!url.searchParams.has("s")) return;
-  url.searchParams.delete("s");
-  history.replaceState(null, "", url.pathname + url.search + url.hash);
 }
 
 async function countReferral() {
@@ -143,7 +129,6 @@ async function countReferral() {
     sessionStorage.setItem("ping-referral", "1");
   } catch { /* 저장소가 막히면 매번 센다 */ }
   const host = referralHost();
-  dropShareMark();
   // 세션 표시는 셀 것이 없어도 남겨 둔다 — "한 세션에 한 번" 이라는 규칙은 그대로다
   if (counted || !host) return;
   await callStats("/hit?type=ref&host=" + encodeURIComponent(host), { method: "POST" });

@@ -133,24 +133,9 @@ document.addEventListener("click", (e) => {
   gotoRandomTeenieping();
 });
 
-/* ===== 페이지 공유 =====
-   상단 바 오른쪽 끝의 공유 버튼. 세 페이지가 모두 util.js 를 쓴다.
-   휴대폰처럼 공유 시트를 지원하는 곳에서는 시트를 띄우고,
-   그렇지 않은 곳에서는 주소를 클립보드에 복사한다. */
-
-/* 공유할 주소 — 예전 주소에 남아 있을 수 있는 from(한때 「목록으로」 링크가 쓰던 검색·필터
-   상태)은 빼고 깨끗한 링크를 준다.
-   개별 페이지는 og 태그가 박힌 정적 파일이라 지금 주소를 그대로 공유하면 된다. */
-function shareUrl() {
-  const url = new URL(location.href);
-  url.searchParams.delete("from");
-  url.hash = "";
-  // 공유 버튼을 거친 링크임을 표시한다 — 유입 통계에서 이것만 확실히 구분된다.
-  // 받은 사람 쪽에서는 세고 나서 js/stats.js 가 주소에서 지운다.
-  url.searchParams.set("s", "1");
-  return url.href;
-}
-
+/* ===== 짧은 알림 =====
+   누른 버튼 바로 아래에 잠깐 떴다 사라지는 말풍선. 좋아요(js/page.js)와 말해서 찾기·맞히기의
+   마이크(js/list.js · js/quiz.js)가 쓴다. */
 let toastTimer = null;
 function showToast(msg, anchor) {
   let box = document.querySelector(".toast");
@@ -162,8 +147,9 @@ function showToast(msg, anchor) {
   }
   box.textContent = msg;
 
-  // 누른 버튼 바로 아래·오른쪽 끝에 맞춰 띄운다 (버튼을 못 찾으면 화면 오른쪽 위)
-  const btn = anchor || document.querySelector("[data-share]");
+  // 누른 버튼 바로 아래·오른쪽 끝에 맞춰 띄운다. 버튼을 주지 않으면 헤더 오른쪽 끝의
+  // 공룡 도감 링크 아래(공유 버튼이 있던 자리), 그것도 없으면 화면 오른쪽 위
+  const btn = anchor || document.querySelector(".sibling");
   const r = btn ? btn.getBoundingClientRect() : null;
   box.style.top = (r ? r.bottom + 10 : 70) + "px";
   box.style.right = Math.max(12, r ? window.innerWidth - r.right : 20) + "px";
@@ -173,49 +159,6 @@ function showToast(msg, anchor) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => box.classList.remove("show"), 2000);
 }
-
-/* clipboard API 는 https(또는 localhost)에서만 쓸 수 있다.
-   file:// 로 직접 열어 본 경우에는 복사가 되지 않는다. */
-function copyText(text) {
-  if (!navigator.clipboard || !window.isSecureContext) {
-    return Promise.reject(new Error("clipboard unavailable"));
-  }
-  return navigator.clipboard.writeText(text);
-}
-
-async function sharePage(btn) {
-  const url = shareUrl();
-  const title = document.title;
-
-  if (navigator.share) {
-    try {
-      await navigator.share({ title, url });
-      return;
-    } catch (err) {
-      // 사용자가 공유 시트를 닫은 것뿐이면 아무 일도 하지 않는다
-      if (err && err.name === "AbortError") return;
-      // 그 밖의 실패(권한 등)는 아래 복사로 넘어간다
-    }
-  }
-
-  try {
-    await copyText(url);
-    showToast("링크를 복사했어요 😄", btn);
-    if (btn) {
-      btn.classList.add("done");
-      setTimeout(() => btn.classList.remove("done"), 1400);
-    }
-  } catch {
-    showToast("복사하지 못했어요 🥲", btn);
-  }
-}
-
-document.addEventListener("click", (e) => {
-  const btn = e.target.closest("[data-share]");
-  if (!btn) return;
-  e.preventDefault();
-  sharePage(btn);
-});
 
 /* ===== 통계 요청 시간 제한 =====
    통계 서버(Cloudflare Worker)가 이따금 몇 초씩 늦게 답한다. 시간 제한이 없으면
@@ -242,7 +185,7 @@ const STATS_TIMEOUT = 5000;
    버튼을 <a>·<button> 안에 넣으면 안 된다 (누를 수 있는 것 안의 누를 수 있는 것).
    그래서 부르는 쪽은 언제나 이름 옆 '형제' 자리에 놓는다. */
 
-/* 아이콘은 이모지가 아니라 인라인 SVG 다. 헤더 공유 버튼과 같은 방식 —
+/* 아이콘은 이모지가 아니라 인라인 SVG 다 —
    currentColor 를 따라가므로 분홍 테마에 맞고, 기기에 그 이모지가 있는지
    따질 일도 없다 (🗣️ 는 글꼴에 따라 두부로 나오고, 작게 줄이면 어두운
    덩어리로 뭉개진다). 읽는 동안에는 테두리가 번진다 — css 의 audio-pulse. */

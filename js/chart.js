@@ -37,9 +37,6 @@ const el = {
   refTabs: document.getElementById("refTabs"),
 };
 
-/* 주소가 없는 공유 링크에만 이름을 붙여 준다.
-   리퍼러가 없는 방문은 아예 세지 않으므로(js/stats.js) 여기 올 일이 없다. */
-const REF_LABEL = { _share: "공유 링크" };
 let refDays = 7;        // 첫 칸(최근 7일)과 맞춘다
 
 let data = null;
@@ -154,38 +151,32 @@ function csvName() {
   return `티니핑도감-통계-누적-${data.dates[data.dates.length - 1]}.csv`;
 }
 
-/* 방문 경로 — 공유 링크를 맨 위에 고정하고, 그 아래에 나머지 주소를 많이 들어온 순으로 놓는다.
-   공유 링크는 우리 공유 버튼을 거친 링크라(js/stats.js) 주소들과 성격이 달라, 많고 적음과 상관없이 늘 같은
-   자리에서 보이게 한다 — 이 기간에 없으면 0 으로. Worker 는 많은 순으로 잘라 돌려주므로 공유 링크가 잘리지
-   않게 넉넉히 받고(REF_FETCH — Worker 는 어차피 그 기간의 기록을 다 훑는다), 나머지만 REF_SHOWN 개로 자른다.
-   막대는 고정한 것까지 통틀어 가장 큰 값 대비 길이다. */
-const SHARE_HOST = "_share";
-const REF_FETCH = 200;
+/* 방문 경로 — 많이 들어온 순으로 REF_SHOWN 개. 막대는 가장 큰 값 대비 길이다.
+   공유 버튼이 있던 때 따로 세던 「공유 링크」(_share)는 Worker 가 내보내지 않는다(worker/counter.js). */
 const REF_SHOWN = 20;
 async function loadInflow() {
   el.inflow.innerHTML = `<li class="empty">불러오는 중…</li>`;
-  let all = null;
+  let rows = null;
   try {
-    const res = await fetch(`${CHART_API}/refs?days=${refDays}&limit=${REF_FETCH}`,
+    const res = await fetch(`${CHART_API}/refs?days=${refDays}&limit=${REF_SHOWN}`,
       { mode: "cors", cache: "no-store", signal: timeoutSignal(STATS_TIMEOUT) });
-    if (res.ok) all = (await res.json()).rows;
+    if (res.ok) rows = (await res.json()).rows;
   } catch { /* 아래에서 안내 */ }
 
-  if (!all) {
+  if (!rows) {
     el.inflow.innerHTML = `<li class="empty">불러오지 못했어요 🥲</li>`;
     return;
   }
-  const share = all.find((r) => r.host === SHARE_HOST) || { host: SHARE_HOST, n: 0 };
-  const others = all.filter((r) => r.host !== SHARE_HOST).slice(0, REF_SHOWN);
-  const max = Math.max(1, share.n, ...others.map((r) => r.n));
-  const item = (r, cls) => `<li${cls ? ` class="${cls}"` : ""}>
-      <span class="inflow-name">${REF_LABEL[r.host] || r.host}</span>
+  if (!rows.length) {
+    el.inflow.innerHTML = `<li class="empty">이 기간에는 기록이 없어요 🌱</li>`;
+    return;
+  }
+  const max = Math.max(1, ...rows.map((r) => r.n));
+  el.inflow.innerHTML = rows.map((r) => `<li>
+      <span class="inflow-name">${r.host}</span>
       <span class="inflow-bar"><i style="width:${(r.n / max) * 100}%"></i></span>
       <span class="inflow-num">${r.n.toLocaleString("ko-KR")}</span>
-    </li>`;
-  el.inflow.innerHTML = item(share, "pinned") + (others.length
-    ? others.map((r) => item(r)).join("")
-    : `<li class="empty">이 기간에는 다른 경로가 없어요 🌱</li>`);
+    </li>`).join("");
 }
 
 el.refTabs.addEventListener("click", (e) => {

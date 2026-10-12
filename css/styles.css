@@ -92,20 +92,28 @@ a { color: inherit; text-decoration: none; }
 .nav a:hover { background: var(--pink-soft); color: var(--ink); }
 .nav a.active { background: var(--pink); color: #fff; box-shadow: var(--shadow); }
 
-/* 공유 버튼 — 헤더 오른쪽 끝에 붙인다 (nav 는 로고 옆 왼쪽 정렬이라 auto 여백은 여기서 준다) */
-.share-btn {
+/* 공룡 도감으로 가는 링크 — 헤더 오른쪽 끝, 공유 버튼이 있던 자리다 (nav 는 로고 옆 왼쪽
+   정렬이라 auto 여백은 여기서 준다). 넓은 화면에서는 로고와 이름을, 폰에서는 로고만 둔다.
+   로고는 공룡 도감의 로고와 같다 — 🦖 이모지에 그쪽 로고의 바탕색. */
+.sibling {
   margin-left: auto; flex: 0 0 auto;
-  width: 38px; height: 38px; display: grid; place-items: center;
+  display: flex; align-items: center; gap: 8px;
+  height: 38px; padding: 0 14px 0 4px;
   border: 2px solid var(--line); border-radius: 999px;
   background: var(--card); color: var(--ink-soft);
-  cursor: pointer; transition: .18s; padding: 0;
+  font-weight: 700; font-size: 13.5px; white-space: nowrap;
+  transition: .18s;
 }
-.share-btn svg { width: 18px; height: 18px; display: block; }
-.share-btn:hover { border-color: var(--pink); color: var(--pink); box-shadow: var(--shadow); }
-.share-btn:active { transform: scale(0.94); }
-.share-btn.done { border-color: var(--mint); color: #1f9c7c; }
+.sibling:hover { border-color: var(--pink); color: var(--ink); box-shadow: var(--shadow); }
+.sibling:active { transform: scale(0.96); }
+.sibling-logo {
+  flex: 0 0 auto; width: 26px; height: 26px; border-radius: 999px;
+  display: grid; place-items: center;
+  background: #dcf1e2;          /* 공룡 도감 로고의 바탕(그쪽 --green-soft) */
+  font-size: 16px; line-height: 1;
+}
 
-/* 복사 완료 알림 — 공유 버튼 바로 아래에 잠깐 떴다 사라진다.
+/* 짧은 알림 — 누른 버튼 바로 아래에 잠깐 떴다 사라진다.
    실제 위치(top/right)는 버튼 자리에 맞춰 showToast 가 잡아 준다. */
 .toast {
   position: fixed; top: 0; right: 0;
@@ -121,8 +129,8 @@ a { color: inherit; text-decoration: none; }
 
 /* ===== 이름 읽어 주기 =====
    이름 옆 동그란 버튼. 상세·퀴즈·인기 차트가 같은 모양을 쓴다.
-   아이콘은 인라인 SVG 스피커다 — 헤더 공유 버튼과 같은 방식이라 색이
-   currentColor 를 따라가고, 이모지처럼 기기마다 모양이 달라지지 않는다.
+   아이콘은 인라인 SVG 스피커다 — 색이 currentColor 를 따라가고,
+   이모지처럼 기기마다 모양이 달라지지 않는다.
    읽는 동안에는 테두리가 번져 나간다 — 소리가 나지 않는 곳에서도
    지금 읽는 중임이 보이게. 말해서 찾기(.mic-btn)와 같은 몸짓이다.
    크기는 --sz 하나로 정한다 (아이콘은 그 절반). 놓이는 자리마다 값만 바꾼다. */
@@ -751,7 +759,7 @@ a.rel-item:hover { transform: translateY(-2px); border-color: var(--pink); box-s
 }
 /* 이전·다음 표시. 화살표 글자(← →)는 글꼴마다 굵기와 길이가 제각각이라 두 버튼이
    짝이 맞지 않아 보였다. 인라인 SVG 쉐브론은 currentColor 를 따라가고 획 굵기가
-   고정이라 어디서나 같은 모양이다 (읽어 주기·공유 아이콘과 같은 방식). */
+   고정이라 어디서나 같은 모양이다 (읽어 주기 아이콘과 같은 방식). */
 .chev { width: 1em; height: 1em; display: block; flex: 0 0 auto; }
 /* 글자와 나란히 놓일 때 (예: '다음 티니핑 ›').
    여기는 flex 가 아니라 밑선(baseline) 기준이라 vertical-align 으로 맞춘다.
@@ -950,8 +958,6 @@ a.rel-item:hover { transform: translateY(-2px); border-color: var(--pink); box-s
   font-weight: 800; font-variant-numeric: tabular-nums;
 }
 .inflow-list .empty { display: block; padding: 18px 0; }
-/* 맨 위에 고정한 공유 링크(js/chart.js) — 많은 순으로 선 나머지와 가는 금으로 가른다 */
-.inflow-list li.pinned { border-bottom: 1px solid var(--line); padding-bottom: 10px; margin-bottom: 4px; }
 
 /* ===== 반응형 ===== */
 @media (max-width: 720px) {
@@ -963,8 +969,13 @@ a.rel-item:hover { transform: translateY(-2px); border-color: var(--pink); box-s
   .brand { font-size: 17px; }
   .brand .logo { width: 30px; height: 30px; border-radius: 9px; }
   .nav a { padding: 7px 11px; font-size: 13px; }
-  .share-btn { width: 34px; height: 34px; }
-  .share-btn svg { width: 16px; height: 16px; }
+  /* 공룡 도감 링크는 로고만 남긴다. 이름은 화면에서만 감춘다 — 로고가 aria-hidden 이라
+     글자까지 없애면(display: none) 링크에 이름이 남지 않는다. */
+  .sibling { width: 34px; height: 34px; padding: 0; justify-content: center; }
+  .sibling-name {
+    position: absolute; width: 1px; height: 1px; overflow: hidden;
+    clip-path: inset(50%); white-space: nowrap;
+  }
 
   .sticky-bar { padding-bottom: 10px; }
   .controls { padding: 4px 0 0; gap: 10px; }
@@ -995,6 +1006,10 @@ a.rel-item:hover { transform: translateY(-2px); border-color: var(--pink); box-s
 
   /* 퀴즈 */
   .quiz { padding-block: 18px 50px; }
+  /* 인기 차트·방문 통계도 위아래 여백을 되돌린다 — 위의 .wrap { padding: 0 14px } 가 위아래까지 0 으로
+     만든다. 제목의 기본 여백(약 21px)이 가려 주던 것을, 제목 여백을 0 으로 정하면서 폰에서 제목이
+     헤더에 붙었다. 공룡 도감과 같은 값이다. */
+  .rank, .chart-page { padding-block: 18px 50px; }
   .quiz h1, .rank h1, .chart-page h1 { font-size: 24px; }
   .quiz-stage { padding: 18px; }
   .diff-card { padding: 15px 16px; gap: 12px; }
@@ -1009,7 +1024,7 @@ a.rel-item:hover { transform: translateY(-2px); border-color: var(--pink); box-s
 /* 내비 항목이 셋(랜덤핑·이름 맞추기·인기 순위)이라 폰에서는 자리가 모자란다.
    로고만 남기고 "티니핑 도감" 글자를 감춘 뒤, 그래도 모자라면 내비만 가로로
    스크롤되게 한다. 글자 길이를 재서 맞추는 대신 넘칠 때 알아서 밀리게 두는 편이
-   안전하다 — 기기·글꼴에 따라 폭이 달라지기 때문. (공유 버튼은 오른쪽에 그대로) */
+   안전하다 — 기기·글꼴에 따라 폭이 달라지기 때문. (공룡 도감 링크는 오른쪽에 그대로) */
 @media (max-width: 520px) {
   .brand span:last-child { display: none; }
   .nav {
@@ -1042,7 +1057,7 @@ a.rel-item:hover { transform: translateY(-2px); border-color: var(--pink); box-s
   border-top: 1px solid var(--line); margin-top: 10px;
 }
 .footer p { margin: 3px 0; }
-/* 방문·공유 숫자 — 통계 서버 주소를 넣기 전에는 js/stats.js 가 감춰 둔다 */
+/* 방문 숫자 — 통계 서버 주소를 넣기 전에는 js/stats.js 가 감춰 둔다 */
 .footer .stats { margin-bottom: 12px; opacity: .8; font-variant-numeric: tabular-nums; }
 /* 통계 링크는 주변 글자와 같은 평문으로 보이게 (푸터의 일반 a 규칙을 되돌린다) */
 .footer .stats-link { color: inherit; font-weight: inherit; text-decoration: none; }
