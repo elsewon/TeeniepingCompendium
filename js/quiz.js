@@ -352,8 +352,9 @@ function armRows(box) {
   }, 350);
 }
 
-/* --- 보통/어려움: 이름 가리기 → 3초 카운트다운 뒤 정답 --- */
-/* 정답은 손으로 여는 것이 아니라 3초가 지나면 저절로 열린다.
+/* --- 보통/어려움: 이름 가리기 → (타이머를 켜면) 3초 카운트다운 뒤 정답 --- */
+/* 타이머를 켜면(이름 칸 왼쪽 끝 단추 — 기본은 꺼짐) 정답은 손으로 여는 것이 아니라 3초가 지나면
+ * 저절로 열린다. 꺼져 있으면 칸을 눌러 열거나, 맞는 이름을 말하면 그 자리에서 열린다.
  * 예전에는 「👆 눌러서 이름 보기」 칸을 눌러야 정답이 나왔다. 그러면 그림을 보자마자
  * 눌러 맞혀 보는 참 없이 답만 보고 넘어갈 수 있었다. 시간을 고정해 두면 문제마다
  * 반드시 3초의 '생각하는 참'이 생기고, 그 뒤에는 손을 대지 않아도 답이 온다.
@@ -373,6 +374,12 @@ const COUNTDOWN_MS = 3000;
 const TICK_MS = 1000;
 let countdownTimers = [];
 let countdownSeq = 0;             // 그림을 기다리는 사이에 문제가 바뀌었는지 가리는 표
+/* 3초 타이머를 켜 둘지 — 이름 칸 왼쪽 끝 단추로 끄고 켠다(toggleTimer). 기본은 꺼짐이고, 바꾸면
+   이번 방문 동안 다음 문제·다른 난도에도 이어진다. 꺼져 있으면 세지 않고, 칸을 눌러 정답을 보거나
+   마이크로 맞는 이름이 들리면 그 자리에서 정답을 연다(revealNow). */
+let timerOn = false;
+let cur = null;                   // 지금 문제의 카운트다운 { seq, slot, started, run, tryStart }
+const TAP_HINT = "눌러서 정답 보기";
 
 function cancelCountdown() {
   countdownSeq++;                 // 아직 그림을 기다리던 시작도 여기서 무효가 된다
@@ -402,11 +409,12 @@ function whenImageShown(box, fn) {
 function slotHTML() {
   const secs = COUNTDOWN_MS / 1000;
   return `
-    <div class="name-slot" id="nameSlot">
+    <div class="name-slot${timerOn ? "" : " tap"}" id="nameSlot">
       <span class="countdown-fill" role="progressbar" aria-label="정답까지 남은 시간"
             aria-valuemin="0" aria-valuemax="${secs}" aria-valuenow="${secs}"
             style="animation-duration: ${COUNTDOWN_MS}ms"></span>
-      <span class="heard"></span>${micHTML()}
+      <button type="button" class="slot-hit" aria-label="정답 보기"${timerOn ? " hidden" : ""}></button>
+      ${timerHTML()}<span class="heard${timerOn ? "" : " hint"}">${timerOn ? "" : TAP_HINT}</span>${micHTML()}
     </div>`;
 }
 
@@ -423,25 +431,30 @@ function renderNameSlot() {
   hearing = { text: "", matched: false, over: false, base: mic.count, onSettled: null };
   if (mic.wanted && !mic.rec && !mic.dead) startHearing();
 
-  // 카운트다운은 넷이 갖춰져야 시작한다 — 그림이 화면에 나타나고(whenImageShown), 마이크가
-  // 정해져 있고(첫 문제는 startMode 가 이미 기다렸고, 다시 켜는 중이면 그것이 정해지고),
-  // 난도 칸이 올라가는 전환이 끝나고(afterTransition), 소리 컨텍스트가 실제로 돌고(whenAudioReady).
+  // 카운트다운은 타이머가 켜져 있을 때, 넷이 갖춰져야 시작한다 — 그림이 화면에 나타나고
+  // (whenImageShown), 마이크가 정해져 있고(첫 문제는 startMode 가 이미 기다렸고, 다시 켜는 중이면
+  // 그것이 정해지고), 난도 칸이 올라가는 전환이 끝나고(afterTransition), 소리 컨텍스트가 실제로
+  // 돌고(whenAudioReady). 타이머 단추로 껐다 켜면 그 문제를 처음부터 다시 센다(toggleTimer).
   const seq = countdownSeq;
   let imageShown = false;
-  let started = false;                // 그림과 마이크 양쪽에서 불리므로 한 번만 시작한다
-  const tryStart = () => {
-    if (started || seq !== countdownSeq) return;   // 이미 시작했거나, 기다리는 사이 나갔다
+  const c = { seq, slot, started: false, run: 0 };
+  cur = c;
+  c.tryStart = () => {
+    if (c.started || seq !== countdownSeq) return;   // 이미 시작했거나, 기다리는 사이 나갔다
+    if (!timerOn) return;                            // 타이머를 껐으면 세지 않는다 — 눌러서 본다
     // 마이크는 켜려는 중일 때만 기다린다 — 접었거나(dead) 쓰지 않기로 했으면(wanted 아님)
     // 기다릴 것이 없다.
     if (!imageShown || !(mic.settled || mic.dead || !mic.wanted)) return;
-    started = true;
+    c.started = true;                 // 그림과 마이크 양쪽에서 불리므로 한 번만 시작한다
+    const run = ++c.run;              // 세기 전에 타이머를 끄면 이 시작은 무효다(haltCountdown)
+    const live = () => seq === countdownSeq && run === c.run && timerOn;
     afterTransition(() => {
-      if (seq !== countdownSeq) return;
-      whenAudioReady(() => { if (seq === countdownSeq) startCountdown(slot); });
+      if (!live()) return;
+      whenAudioReady(() => { if (live()) startCountdown(slot); });
     });
   };
-  hearing.onSettled = tryStart;
-  whenImageShown(el.image, () => { imageShown = true; tryStart(); });
+  hearing.onSettled = c.tryStart;
+  whenImageShown(el.image, () => { imageShown = true; c.tryStart(); });
 }
 
 /* 소리 컨텍스트가 돌고 시계가 갈 때 fn 을 부른다. 허락 창이 뜨는 사이 사파리가 컨텍스트를
@@ -614,15 +627,84 @@ function toggleMic() {
   mic.restarts = 0;
   startHearing();
 }
+
+/* 타이머 단추 — 이름 칸 왼쪽 끝에서 마이크 단추와 마주 선다. 켜져 있으면 번지고(.on), 누르면 3초
+   타이머를 끄고 켠다(toggleTimer). 그림은 스톱워치 — 몸통·바늘·꼭지. */
+const TIMER_ICON =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"' +
+  ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<circle cx="12" cy="14" r="7"/><path d="M12 14v-3.5"/><path d="M9.5 3h5"/><path d="M12 3v4"/></svg>';
+function timerHTML() {
+  return `<button type="button" class="slot-timer${timerOn ? " on" : ""}" aria-pressed="${timerOn}"` +
+    ` aria-label="${timerOn ? "타이머 끄기" : "타이머 켜기"}" title="3초 타이머">${TIMER_ICON}</button>`;
+}
+/* 단추와 칸 모양을 타이머 상태에 맞춘다. 끄면 칸 전체가 「정답 보기」 단추가 되고(.tap · .slot-hit),
+   들린 말이 없으면 가운데에 「눌러서 정답 보기」를 적는다. 켜면 그 글을 거둔다. */
+function paintTimer() {
+  const slot = el.answer.querySelector(".name-slot");
+  if (!slot) return;
+  const b = slot.querySelector(".slot-timer");
+  if (b) {
+    b.classList.toggle("on", timerOn);
+    b.setAttribute("aria-pressed", timerOn ? "true" : "false");
+    b.setAttribute("aria-label", timerOn ? "타이머 끄기" : "타이머 켜기");
+  }
+  slot.classList.toggle("tap", !timerOn);
+  const hit = slot.querySelector(".slot-hit");
+  if (hit) hit.hidden = timerOn;
+  const h = slot.querySelector(".heard");
+  if (h && !(hearing && hearing.text)) {
+    if (!timerOn) { h.className = "heard hint"; h.textContent = TAP_HINT; }
+    else if (h.classList.contains("hint")) { h.className = "heard"; h.textContent = ""; }
+  }
+}
+/* 타이머 단추를 누르면 — 켜져 있으면 끈다: 세던 것을 멈추고 막대를 다시 가득 채운다. 그사이 맞는
+   이름이 이미 들렸으면 그 자리에서 정답을 연다(꺼진 동안의 규칙). 꺼져 있으면 켠다: 그 문제를
+   처음부터 센다. 누른 흐름 안이라 소리도 여기서 깨운다. 정답이 이미 열렸으면 다음 문제부터다. */
+function toggleTimer() {
+  timerOn = !timerOn;
+  wakeAudio();
+  const c = cur;
+  const live = !!(c && c.seq === countdownSeq && c.slot.isConnected && hearing && !hearing.over);
+  if (live) {
+    if (timerOn) {
+      hearing.onSettled = c.tryStart;   // 마이크가 아직 정해지지 않았으면 정해질 때 다시 부른다
+      c.tryStart();
+    } else {
+      haltCountdown(c);
+    }
+  }
+  paintTimer();
+  if (live && !timerOn && hearing.matched) revealNow(true);
+}
+function haltCountdown(c) {
+  c.run++;                          // 아직 세기 전이던 시작도 무효
+  c.started = false;
+  countdownTimers.forEach(clearTimeout);
+  countdownTimers = [];
+  c.slot.classList.remove("counting");   // 막대가 다시 가득 찬다 — 다시 켜면 처음부터 줄어든다
+  const bar = c.slot.querySelector(".countdown-fill");
+  if (bar) bar.setAttribute("aria-valuenow", COUNTDOWN_MS / 1000);
+}
+/* 타이머가 꺼진 동안 정답을 연다 — 칸을 눌렀거나(hit 없음, 소리 없이) 맞는 이름이 들렸을 때(hit, 딩동). */
+function revealNow(hit) {
+  if (!hearing || hearing.over) return;
+  hearing.over = true;
+  if (hit) chime();
+  revealName(hit ? "correct" : null);
+}
+
 el.answer.addEventListener("click", (e) => {
   if (e.target.closest(".slot-mic")) toggleMic();
+  else if (e.target.closest(".slot-timer")) toggleTimer();
+  else if (e.target.closest(".slot-hit")) revealNow(false);
 });
 /* 들린 이름을 막대 한가운데에. 남은 초를 세던 숫자가 있었다면 밀어낸다. */
 function paintHeard(text) {
   const h = el.answer.querySelector(".heard");
   if (!h) return;
   h.textContent = text;
-  h.classList.remove("num");
+  h.classList.remove("num", "hint");
 }
 /* 아직 들린 말이 없을 때는 남은 초를 큰 숫자로 센다 — 삐 소리마다 3 → 2 → 1. 이름이
    한 번 들리면 그 뒤로는 숫자를 그리지 않는다. 숫자는 요소째 갈아 끼운다 — 새로 놓여야
@@ -723,6 +805,8 @@ function startHearing(waitMs, soft) {
     if (!shown) return;                            // 들린 것이 비면 보이던 것(숫자)을 그대로 둔다
     hearing.text = shown;
     paintHeard(shown);
+    // 타이머가 꺼져 있으면 기다릴 3초가 없다 — 맞는 이름이 들리면 그 자리에서 연다
+    if (hearing.matched && !timerOn) revealNow(true);
   };
   r.onerror = (e) => {
     if (mic.rec !== r) return;
