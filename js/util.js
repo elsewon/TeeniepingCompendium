@@ -366,11 +366,18 @@ document.addEventListener("click", (e) => {
   /* 값이 없는 data-speak 는 "나를 감싼 칸을 읽어라"는 뜻이다.
      칸(.info-block) 안의 문단을 모두 이어 읽는다 — 에피소드가 여러 회차로 나뉘어도
      버튼 하나로 처음부터 끝까지 들려준다. 제목(h3)은 빼고 문단만 읽는다.
-     칸을 못 찾으면 예전처럼 감싼 요소의 글을 읽는다. */
+     칸을 못 찾으면 예전처럼 감싼 요소의 글을 읽는다.
+     줄거리의 낱말 풀이 번호(<sup class="note-ref">)는 빼고 읽는다 — 그대로 두면
+     「로미1가」처럼 숫자가 이름에 붙어 읽힌다. */
   const box = btn.closest(".info-block");
   const ps = box ? [...box.querySelectorAll("p")] : [];
+  const spoken = (el) => {
+    const copy = el.cloneNode(true);
+    copy.querySelectorAll(".note-ref").forEach((n) => n.remove());
+    return copy.textContent.trim();
+  };
   const text = btn.dataset.speak
-    || (ps.length ? ps.map((el) => el.textContent.trim()).filter(Boolean).join(" ")
+    || (ps.length ? ps.map(spoken).filter(Boolean).join(" ")
                   : (btn.parentElement ? btn.parentElement.textContent.trim() : ""));
   speakText(text, btn);
 });

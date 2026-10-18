@@ -11,6 +11,7 @@
  *
  * 머리말·꼬리말은 index.html 에서 그대로 떼어다 쓴다 (같은 내용을 세 번 적지 않으려고).
  */
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import vm from "node:vm";
@@ -87,6 +88,123 @@ function relationsHTML(center) {
       : `<span class="rel-item is-off">${inner}</span>`}</li>`;
   }).join("");
   return `<ul class="rel-list">${items}</ul>`;
+}
+
+/* ── 줄거리 속 이름 ─────────────────────────────────────
+ *
+ * 에피소드 줄거리에서 두 가지를 찾는다.
+ *   · 다른 티니핑 이름 — 그 티니핑 페이지로 가는 링크로 바꾼다
+ *   · 사람 이름과 고유 명사 — 번호를 달고, 에피소드와 관계 사이 '📝 낱말 풀이' 칸에
+ *     풀이를 모은다 (tools/glossary.js · images/glossary/, tools/make-glossary-images.py)
+ *
+ * 둘을 한데 모아 **긴 말부터** 맞춘다. 「로미핑」이 「로미」보다, 「다해핑」이 「해핑」보다,
+ * 「프린세스 스타라이트」가 「프린세스 스타」보다 먼저 걸려야 한다. 그리고 낱말의 첫머리에서만
+ * 맞춘다 — 바로 앞에 한글이 붙어 있으면 다른 낱말의 한가운데다.
+ *
+ * 티니핑 링크는 회차 문단마다 처음 나올 때만 건다. 한 문단에 하츄핑이 다섯 번 나오면
+ * 링크도 다섯 개가 되어 글이 어지럽다. 회차를 골라 읽기도 하므로 문단이 바뀌면 다시 건다.
+ * 낱말 풀이 번호는 페이지에서 처음 나올 때만 단다 — 풀이가 페이지에 하나뿐이라서다.
+ * 자기 자신은 링크로 걸지 않는다.
+ *
+ * 「하츄핑」은 그 기수의 하츄핑으로 잇는다. 6기 이야기의 하츄핑은 프린세스 하츄핑이라,
+ * 눌러서 보는 모습과 이야기도 그 기수의 것이라야 맞는다. 1기와 극장판은 하츄핑 그대로다.
+ * 「노라핑&노리핑」·「커핑&머핑」은 줄거리에서 따로 불리므로 한 사람씩의 이름으로도 찾는다. */
+const GLOSSARY = (() => {
+  const win = {};
+  new Function("window", fs.readFileSync(path.join(ROOT, "tools/glossary.js"), "utf8"))(win);
+  return win.GLOSSARY || [];
+})();
+const BY_NAME = Object.fromEntries(DATA.map((t) => [t.nameKo, t]));
+const SEASON_HEARTS = {
+  jewel: "다이아 하츄핑", key: "플로라 하츄핑", dessert: "베리 하츄핑",
+  star: "스타 하츄핑", princess: "프린세스 하츄핑",
+};
+
+/* 그림 내용의 짧은 해시 — imgv 와 같은 까닭으로 주소 뒤에 붙인다(build-data.mjs 참고).
+   풀이 그림은 여러 페이지가 함께 쓰므로(로미는 거의 모든 페이지에 나온다) 한 번 받으면
+   캐시에 남아, 그림을 고쳐도 주소가 같으면 다른 페이지에서 옛 그림이 보인다. */
+function version(rel) {
+  const p = path.join(ROOT, rel);
+  return fs.existsSync(p)
+    ? "?v=" + crypto.createHash("md5").update(fs.readFileSync(p)).digest("hex").slice(0, 8)
+    : null;
+}
+
+const WORDS = [];
+for (const t of DATA) {
+  WORDS.push({ text: t.nameKo, ping: t });
+  if (t.nameKo.includes("&")) for (const one of t.nameKo.split("&")) WORDS.push({ text: one, ping: t });
+}
+for (const n of GLOSSARY) for (const text of n.match || [n.term]) WORDS.push({ text, note: n });
+WORDS.sort((a, b) => b.text.length - a.text.length);
+const BY_FIRST = new Map();
+for (const w of WORDS) {
+  if (!BY_FIRST.has(w.text[0])) BY_FIRST.set(w.text[0], []);
+  BY_FIRST.get(w.text[0]).push(w);                // 긴 것부터 쌓인다
+}
+const HANGUL = /[가-힣]/;
+const PARTICLE = /^(?:은|는|이|가|을|를|의|에게|에|과|와|도|만|까지|한테|처럼|보다|이랑|이나|,)/;
+
+function wordAt(text, i, seasonKey) {
+  if (i > 0 && HANGUL.test(text[i - 1])) return null;
+  for (const w of BY_FIRST.get(text[i]) || []) {
+    if (!text.startsWith(w.text, i)) continue;
+    const n = w.note;
+    if (n) {
+      const rest = text.slice(i + w.text.length, i + w.text.length + 4);
+      if (n.season && !n.season.includes(seasonKey)) continue;
+      if (n.strict && !PARTICLE.test(rest)) continue;
+      if (n.not && n.not.some((x) => rest.startsWith(x))) continue;
+    }
+    return w;
+  }
+  return null;
+}
+
+function pingLink(w, ctx, linked) {
+  let t = w.ping;
+  if (t.nameKo === "하츄핑" && SEASON_HEARTS[ctx.seasonKey]) t = BY_NAME[SEASON_HEARTS[ctx.seasonKey]] || t;
+  if (t.id === ctx.self.id || linked.has(t.id)) return esc(w.text);
+  linked.add(t.id);
+  return `<a class="ping-link" href="${encodeURIComponent(t.id)}.html">${esc(w.text)}</a>`;
+}
+
+function noteRef(w, ctx) {
+  const n = w.note;
+  if (ctx.notes.has(n.id)) return esc(w.text);
+  ctx.notes.set(n.id, n);
+  const no = ctx.notes.size;
+  return `${esc(w.text)}<sup class="note-ref"><a href="#note-${n.id}" aria-label="낱말 풀이 ${no}">${no}</a></sup>`;
+}
+
+/* 줄거리 한 문단을 HTML 로. ctx.notes 는 페이지 전체에 걸쳐 쌓인다(번호가 이어진다). */
+function storyText(plot, ctx) {
+  const linked = new Set();
+  let out = "", plain = "";
+  for (let i = 0; i < plot.length;) {
+    const w = wordAt(plot, i, ctx.seasonKey);
+    if (!w) { plain += plot[i++]; continue; }
+    out += esc(plain) + (w.ping ? pingLink(w, ctx, linked) : noteRef(w, ctx));
+    plain = "";
+    i += w.text.length;
+  }
+  return out + esc(plain);
+}
+
+/* 낱말 풀이 칸. 이름 뒤의 마침표는 눈에 보이지 않게 숨겨 둔다 — 읽어 주기가 문단의 글을 통째로
+   읽으므로, 그것이 없으면 「로미 이모션 왕국의 공주예요」처럼 이름과 풀이가 붙어 읽힌다. */
+function notesHTML(notes) {
+  if (!notes.size) return "";
+  const items = [...notes.values()].map((n, k) => {
+    const v = version(`images/glossary/${n.id}.webp`);
+    const pic = v
+      ? `<span class="note-pic"><img src="${UP}images/glossary/${encodeURIComponent(n.id)}.webp${v}"` +
+        ` alt="" width="112" height="112" loading="lazy"></span>`
+      : "";
+    return `<li id="note-${n.id}"><span class="note-no">${k + 1}</span>${pic}` +
+      `<p><b class="note-term">${esc(n.term)}</b><span class="note-sep">. </span>${esc(n.text)}</p></li>`;
+  }).join("\n            ");
+  return `<ol class="note-list">\n            ${items}\n          </ol>`;
 }
 
 /* ── 페이지 ──────────────────────────────────────────── */
@@ -230,9 +348,11 @@ function page(t) {
      회차 이름 뒤에서 줄을 넘긴다. <br> 뒤에 진짜 줄바꿈을 하나 더 두는 것은 읽어
      주기 때문이다 — 그 버튼은 감싼 문단의 textContent 를 읽는데(js/util.js), <br> 은
      글자를 남기지 않아 「…하츄핑」.로미가」처럼 두 줄이 붙어 읽힌다. */
+  const ctx = { self: t, seasonKey: t.seasonKey, notes: new Map() };
   const storyHTML = (t.episodes || [])
-    .map((e) => `<p>${e.episode ? `${esc(e.episode)}.<br>\n            ` : ""}${esc(e.plot)}</p>`)
+    .map((e) => `<p>${e.episode ? `${esc(e.episode)}.<br>\n            ` : ""}${storyText(e.plot, ctx)}</p>`)
     .join("\n          ");
+  const notes = notesHTML(ctx.notes);
   const relations = relationsHTML(t);
   const block = (title, body) => (body
     ? `<div class="info-block">\n          <h3>${title}</h3>\n          ${body}\n        </div>`
@@ -299,6 +419,7 @@ ${HEADER}
         ${block(`🪄 마법${speakBlockBtnHTML("마법 설명 읽어 주기")}`, magicText
           ? `<p>${esc(magicText)}</p>` : "")}
         ${block(`📖 에피소드${speakBlockBtnHTML("에피소드 줄거리 읽어 주기")}`, storyHTML)}
+        ${block(`📝 낱말 풀이${speakBlockBtnHTML("낱말 풀이 읽어 주기")}`, notes)}
         ${block("🔗 관계", relations)}
       </div>
     </div>

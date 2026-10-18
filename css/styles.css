@@ -404,6 +404,46 @@ a { color: inherit; text-decoration: none; }
 }
 .info-block p { margin: 0; color: var(--ink); font-weight: 500; }
 
+/* ===== 줄거리 속 링크 · 낱말 풀이 번호 ===== */
+/* 다른 티니핑 이름은 그 페이지로 가는 링크다(tools/build-pages.mjs). 이 사이트의 링크는 글자색을
+   이어받아(a { color: inherit }) 글과 구별되지 않으므로, 관계 라벨과 같은 진분홍에 옅은 밑줄을 두어
+   눌러 볼 수 있는 곳임을 알린다. */
+.ping-link {
+  color: #c02d68; font-weight: 700;
+  text-decoration: underline; text-decoration-color: var(--pink-soft);
+  text-decoration-thickness: 2px; text-underline-offset: 3px;
+}
+.ping-link:hover { text-decoration-color: currentColor; }
+/* 각주 번호. line-height 0 — 위첨자가 그 줄만 높이를 밀어 올리지 않게 한다 */
+.note-ref { font-size: .68em; line-height: 0; margin-left: 1px; }
+.note-ref a { color: #c02d68; font-weight: 800; padding: 0 1px; }
+
+/* ===== 낱말 풀이 ===== */
+/* 에피소드와 관계 사이에 온다. 번호 · 그림 · 이름과 풀이를 한 줄에 놓는다.
+   바깥 여백을 음수로 당겨, 번호를 눌러 와 밝혀진 칸의 글이 위아래 칸과 줄이 맞게 한다. */
+.note-list { list-style: none; margin: 0 -8px; padding: 0; display: grid; gap: 4px; }
+.note-list li {
+  display: flex; align-items: flex-start; gap: 10px; padding: 6px 8px; border-radius: 14px;
+  scroll-margin-top: calc(var(--header-h) + 12px);   /* 붙박이 머리말에 가리지 않게 */
+  transition: background .6s;
+}
+.note-list li:target { background: var(--pink-soft); }   /* 번호를 눌러 온 풀이를 밝혀 둔다 */
+.note-no {
+  flex: none; width: 20px; height: 20px; margin-top: 2px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--pink-soft); color: #c02d68; font-size: 11.5px; font-weight: 800;
+}
+.note-list li:target .note-no { background: var(--card); }
+.note-pic { flex: none; width: 56px; height: 56px; border-radius: 14px; overflow: hidden; background: #fff0f6; }
+.note-pic img { width: 100%; height: 100%; display: block; object-fit: cover; }
+.info-block .note-list p { flex: 1; font-size: 14.5px; line-height: 1.5; }
+.note-term { display: block; font-weight: 800; }
+/* 읽어 주기에만 쓰는 마침표 — 화면에는 보이지 않는다 (build-pages.mjs 의 notesHTML) */
+.note-sep {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip-path: inset(50%); white-space: nowrap;
+}
+
 /* ===== 관계 목록 ===== */
 /* 마법·에피소드와 같은 .info-block 안에 들어간다.
    카드 한 장은 그림·이름·관계를 세로로 쌓고, 카드끼리는 가로로 늘어놓아
