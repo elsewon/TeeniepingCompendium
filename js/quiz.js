@@ -978,6 +978,9 @@ function renderChoices() {
     if (e && e.target.closest("[data-speak]")) return;   // 안쪽 읽어 주기 버튼
     if (settled) return;
     settled = true;
+    // 선택지를 읽어 주는 도중에 골랐으면 그 자리에서 멈춘다 — 이름과 이름 사이 쉬는 참에 골라도.
+    // 이미 골랐는데 남은 선택지를 마저 읽으면 아래에서 읽어 주는 정답 이름과 섞인다.
+    stopSpeaking();
     const chosenId = btn.dataset.id;
     // 맞혔으면 보통·어려움과 같은 딩동. 누른 흐름 안이라 컨텍스트도 여기서 깨운다.
     if (chosenId === current.id) { wakeAudio(); chime(); }

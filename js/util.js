@@ -297,8 +297,10 @@ function speakText(text, btn) {
   const synth = window.speechSynthesis;
   if (!synth || !text) return;
   const again = speakingBtn != null && speakingBtn === btn;
-  // 아래 보험이 먼저 깨어나 표시만 꺼진 뒤라도 겹쳐 읽지 않도록 실제 상태도 함께 본다
-  if (speakingBtn || synth.speaking) stopSpeaking();
+  // 아래 보험이 먼저 깨어나 표시만 꺼진 뒤라도 겹쳐 읽지 않도록 실제 상태도 함께 본다.
+  // 이어 읽기(speakSeries)는 이름과 이름 사이 쉬는 참에도 살아 있다(seriesTimer) — 그때는 읽는
+  // 소리가 없어 멈추지 않으면, 새 글을 읽은 뒤 남은 이름을 마저 읽었다.
+  if (speakingBtn || synth.speaking || seriesTimer) stopSpeaking();
   if (again) return;              // 같은 버튼을 다시 누른 것 = 멈추기
   speakOne(text, btn);
 }
@@ -331,7 +333,8 @@ function speakSeries(items, gap = 500) {
   const id = seriesId;            // stopSpeaking 이 올려 둔 이번 벌의 표
   let i = 0;
   const step = () => {
-    if (id !== seriesId || i >= list.length) return;   // 그새 멈췄거나 다 읽었다
+    if (id !== seriesId) return;                            // 그새 멈췄다
+    if (i >= list.length) { seriesTimer = null; return; }   // 다 읽었다 — 이어 읽기가 끝났다는 표시
     const it = list[i++];
     speakOne(it.text, it.btn, () => {
       if (id !== seriesId) return;
