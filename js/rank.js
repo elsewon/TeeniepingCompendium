@@ -90,7 +90,7 @@ function deltaHTML(row) {
     : `<em class="rank-delta down">▼${-row.delta}</em>`;
 }
 
-function rowHTML(row, i, sort) {
+function rowHTML(row, no, tied, sort) {
   const t = getById(row.id);
   if (!t) return "";
   const n = (v) => Number(v || 0).toLocaleString("ko-KR");
@@ -103,17 +103,21 @@ function rowHTML(row, i, sort) {
     .map(({ key, label }) =>
       `<span>${label} ${key === sort ? `<b>${n(row[key])}</b>` : n(row[key])}</span>`)
     .join("");
+  // 읽어 주기는 이름 앞에 순위를 붙인다 — 「1위 하츄핑」「공동 2위 아자핑」.
+  // 눈으로는 위아래 줄의 숫자가 같은 것이 보이지만, 버튼은 한 줄씩 읽으므로
+  // 같은 순위가 이 목록에 또 있으면 「공동」이라고 말해 준다.
+  const said = `${tied ? "공동 " : ""}${no}위 ${t.nameKo}`;
   // 행 자체가 <a> 였을 때는 이름 옆에 읽어 주기 버튼을 둘 수 없었다
   // (링크 안의 버튼). 지금은 행을 <div> 로 두고 투명한 링크를 위에 겹쳐 깐다.
   return `<div class="rank-row">
     <a class="rank-hit" href="${pingHref(t.id)}" aria-label="${t.nameKo} 자세히 보기"></a>
-    <span class="rank-no"><b>${row.rank || i + 1}</b>${deltaHTML(row)}</span>
+    <span class="rank-no"><b>${no}</b>${deltaHTML(row)}</span>
     <span class="rank-thumb">${imageMarkup(t, 120)}</span>
     <span class="rank-body">
       <span class="rank-text">
         <span class="rank-name-row">
           <span class="rank-name">${t.nameKo}</span>
-          ${speakBtnHTML(t.nameKo)}
+          ${speakBtnHTML(t.nameKo, "", said)}
         </span>
         <span class="rank-tags">
           <span class="tag season">${t.season}</span>
@@ -126,9 +130,16 @@ function rowHTML(row, i, sort) {
 }
 
 function fill(box, rows, sort, what) {
-  box.innerHTML = rows && rows.length
-    ? rows.map((r, i) => rowHTML(r, i, sort)).join("")
-    : `<div class="empty">이 기간에는 ${what} 기록이 없어요 🌱</div>`;
+  if (!rows || !rows.length) {
+    box.innerHTML = `<div class="empty">이 기간에는 ${what} 기록이 없어요 🌱</div>`;
+  } else {
+    // 공동 순위는 화면에 나온 줄끼리만 견준다. 10위가 차트 밖 11번째 줄과 나란해도
+    // 화면의 10위가 하나뿐이면 공동이라 하지 않는다 — 보이는 것과 같게 읽는다.
+    const nos = rows.map((r, i) => r.rank || i + 1);
+    const tied = (no) => nos.filter((n) => n === no).length > 1;
+    box.innerHTML = rows.map((r, i) => rowHTML(r, nos[i], tied(nos[i]), sort)).join("");
+  }
+  readAll[sort].disabled = !box.querySelector("[data-speak]");   // 읽을 줄이 있을 때만 켠다
 }
 
 function render(data) {
@@ -154,7 +165,8 @@ function render(data) {
 async function load() {
   stopSpeaking();                 // 줄이 통째로 바뀐다 — 읽던 이름의 버튼이 사라지므로 읽기도 멈춘다
   const loading = `<div class="empty">불러오는 중…</div>`;
-  SORTS.forEach(({ key }) => { el[key].innerHTML = loading; });
+  // 제목 옆 버튼도 끈다 — 읽을 줄이 없다. 못 불러오면 그대로 꺼져 있다(render)
+  SORTS.forEach(({ key }) => { el[key].innerHTML = loading; readAll[key].disabled = true; });
   const at = state.at ? `&at=${encodeURIComponent(state.at)}` : "";
   try {
     const res = await fetch(`${RANK_API}/rank?period=${state.period}${at}&limit=10`,
@@ -187,6 +199,22 @@ el.next.addEventListener("click", () => {
   if (el.next.disabled) return;
   state.at = shift(state.period, state.at, 1);
   load();
+});
+
+/* 순위 제목 옆 버튼 — 그 목록을 1위부터 차례로 읽는다. 줄마다 붙은 버튼의 글
+   (「공동 2위 아자핑」)을 그대로 이어 읽어, 읽는 줄의 버튼이 차례로 뛴다.
+   다시 누르면 멈추고, 줄의 버튼을 누르면 이어 읽기를 멈추고 그 줄만 읽는다
+   (js/util.js 의 speakSeries · speakText). 읽을 줄이 없는 동안(불러오는 중·빈 기간·
+   못 불러옴)에는 꺼 둔다(fill · load). */
+const readAll = {};
+SORTS.forEach(({ key, label }) => {
+  const head = el[key].closest("section").querySelector("h2");
+  head.insertAdjacentHTML("beforeend", speakListBtnHTML(`${label} 순위 읽어 주기`));
+  const btn = head.lastElementChild;
+  readAll[key] = btn;
+  btn.addEventListener("click", () => speakSeries(
+    [...el[key].querySelectorAll("[data-speak]")].map((b) => ({ text: b.dataset.speak, btn: b })),
+    btn));
 });
 
 state.at = defaultAt(state.period);

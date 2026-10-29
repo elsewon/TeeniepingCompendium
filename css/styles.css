@@ -838,7 +838,17 @@ a.rel-item:hover { transform: translateY(-2px); border-color: var(--pink); box-s
     max-width: 884px;
   }
 }
-.rank-cols h2 { font-size: 17px; margin: 8px 0 10px; }
+/* 제목 옆에 그 목록을 차례로 읽어 주는 버튼이 선다(js/rank.js). 제목을 flex 로 두어
+   gap 이 사이를 벌리고 높이를 가운데로 맞춘다(.info-block h3 와 같은 방식). 버튼은
+   행의 버튼과 같은 26px — 제목 한 줄 높이(17 × 1.55 ≈ 26)라 제목이 높아지지 않는다. */
+.rank-cols h2 {
+  font-size: 17px; margin: 8px 0 10px;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.rank-cols h2 .speak-btn { --sz: 26px; }
+/* 읽을 줄이 없는 동안(불러오는 중·빈 기간)에는 꺼진다. 감추되 자리는 남긴다 — 기간을
+   넘길 때마다 버튼이 사라졌다 나타나며 제목이 옆으로 밀렸다 돌아오지 않게. */
+.rank-cols h2 .speak-btn:disabled { visibility: hidden; }
 /* 빈 목록·불러오는 중 문구. .empty 기본값(60px)은 목록 페이지처럼 화면 하나를
    통째로 채울 때를 위한 값이라, 순위 목록이 둘씩 놓이는 여기서는 과하다.
    방문 경로 목록도 같은 이유로 줄여 뒀다. */
