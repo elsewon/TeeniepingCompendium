@@ -2,9 +2,12 @@
 /* 검색·필터 상태는 URL 에 담는다.
    그래야 개별 페이지에 다녀와도 목록이 그대로 유지되고, 링크 공유도 된다. */
 const params = new URLSearchParams(location.search);
+/* 이름을 바꾼 기수. 예전 주소의 ?season= 이 어느 기수와도 맞지 않으면 목록이 통째로 비므로,
+   옛 이름은 새 이름으로 읽는다 (5기는 2026-11 「별」에서 「스타」로). */
+const SEASON_RENAMED = { "5기 별": "5기 스타" };
 const state = {
   q: params.get("q") || "",
-  season: params.get("season") || null,
+  season: SEASON_RENAMED[params.get("season")] || params.get("season") || null,
   grade: params.get("grade") || null,
   liked: params.get("liked") === "1",
 };

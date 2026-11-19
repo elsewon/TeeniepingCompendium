@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* ===== data/teeniepings.js 빌드 =====
  *
- *   roster.js  (PDF 도감 시즌1~6 전체 명단 + 등급)   ← 권위 있는 명단
+ *   roster.js  (PDF 도감 시즌1~6 + 방영 중인 7기 명단 + 등급)   ← 권위 있는 명단
  * + details.js (위키 리서치 상세: 특징/사연/관계/영문명) ← 있으면 병합
  * + magic.js   (개별 페이지에 보여 줄 마법 설명)          ← 있으면 병합
  * + profile.json (나무위키·블로그·카페에서 모은 한 줄 소개/소품)   ← 있으면 병합
@@ -60,7 +60,7 @@ const PROFILE = fs.existsSync(PROFILE_PATH)
   ? new Map(JSON.parse(fs.readFileSync(PROFILE_PATH, "utf8")).map((r) => [r.nameKo, r]))
   : new Map();
 
-const SEASON_NO = { emotion: 1, jewel: 2, key: 3, dessert: 4, star: 5, princess: 6 };
+const SEASON_NO = { emotion: 1, jewel: 2, key: 3, dessert: 4, star: 5, princess: 6, stage: 7 };
 
 /* 나무위키 소품 값을 손보는 자리. profile.json 은 fetch-profile.mjs 가 다시 만들므로
    거기를 고치면 다음 수집에 지워진다. 고칠 것은 여기 적어 둔다. */
@@ -201,7 +201,36 @@ const INTRO_OVERRIDE = {
     "정의롭고 단호하지만",
     "엉뚱한 면도 있는 귀여운 친구야!",
   ],
+  // ⑤ 방영 중인 7기 (2026-11). 문서에 소개꼴 인용문이 없어 ① 처럼 og:description 으로 넘어갔다.
+  //    로열 셋은 '개요' 첫머리의 공식 소개를 옮긴다. 나머지는 '개요'가 나무위키 해설·추정이거나
+  //    봉제 인형 상품 소개뿐이라 비워 둔다 — 공식 소개가 나오면 채운다
+  "레몬핑": [
+    "주목의 티니핑, 레몬핑.",
+    "감정표현이 풍부하고 액션이 크다.",
+    "무엇이든 적극적이고 자신감이 넘친다.",
+  ],
+  "체리핑": [
+    "노력의 티니핑, 체리핑.",
+    "치밀하고 계획적이라 늘 완벽함을 추구한다.",
+    "살짝 새침한 기질이 있고 무대 위에선 도도하고 시크하지만,",
+    "내려오면 헐렁한 모습을 보이기도 한다.",
+  ],
+  "라임핑": [
+    "비트의 티니핑, 라임핑.",
+    "귀엽고 엉뚱하다.",
+    "평소엔 아주 귀엽고 귀여움 받는 것도 좋아하지만,",
+    "무대에선 진지하고 멋있으며 힙하다.",
+    "은근 성격 급한 구석이 있다.",
+  ],
+  "뮤즈핑": [], "디바핑": [], "쏭쏭핑": [], "티키핑": [], "타카핑": [], "낭낭핑": [],
+  "아서핑": [], "코디핑": [], "빠밤핑": [], "팡팡핑": [], "잉잉핑": [], "앙앙핑": [],
+  "아리아핑": [], "냐냥핑": [], "폴짝핑": [], "시고르핑": [],
 };
+
+/* 방영 중인 7기는 소품을 아직 쓰지 않는다. 나무위키 소품 칸에 의상과 들고 다니는 것이 섞여
+   있어(티키핑·타카핑 「곰인형 탈」, 잉잉핑 「공룡 옷」, 뮤즈핑 「하프(추정)」), 개별 페이지가
+   「마법 도구는 …」으로 옮기면 틀린 말이 된다. 마법 설명을 쓸 때 소품도 함께 고른다. */
+const HOLD_ITEM = new Set(["stage"]);
 
 /* 하츄핑 계열 5종은 나무위키가 문서를 공유해 소품이 한 칸에 뭉쳐 온다:
  *   「손거울(1기) → 하프(2기) → 향수(3기) → 핸드벨(4기) → 글로우 퍼프(5기) → 요술봉(6기)」
@@ -227,7 +256,7 @@ function fromProfile(nameKo, seasonKey) {
   return {
     intro: (lines ? lines.join("\n") : p.intro.namu || "")
       .replace(/[\u200b\u2060\ufeff]/g, "").trim(),
-    item: (ITEM_OVERRIDE[nameKo]
+    item: HOLD_ITEM.has(seasonKey) ? "" : (ITEM_OVERRIDE[nameKo]
       || pickBySeason(p.item.namu || "", seasonKey) || p.item.blog || "").trim(),
   };
 }
@@ -448,7 +477,7 @@ entries.forEach((e) => {
 /* ---------- 출력 ---------- */
 const header = `/* ===== 티니핑 데이터 (자동 생성) =====
  * 생성: node tools/build-data.mjs
- * 원본: tools/roster.js (PDF 도감 시즌1~6 전체 명단) + tools/details.js (위키 리서치 상세)
+ * 원본: tools/roster.js (PDF 도감 시즌1~6 + 방영 중인 7기 명단) + tools/details.js (위키 리서치 상세)
  * ⚠️ 이 파일을 직접 수정하지 마세요. tools/roster.js 또는 tools/details.js 를 고친 뒤 다시 빌드하세요.
  *
  * 등급: 로열 | 레전드 | 일반 | 빌런
