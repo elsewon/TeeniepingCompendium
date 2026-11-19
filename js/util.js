@@ -207,6 +207,7 @@ function speakBtnHTML(name, cls, said) {
 }
 
 /* 글 덩어리(마법 설명·에피소드 줄거리)를 읽어 주는 버튼. 칸 제목 옆에 들어간다.
+   낱말 풀이는 풀이마다 이름 옆에 들어가 그 항목만 읽는다(아래 클릭 처리기).
    글을 data-speak 에 옮겨 적지 않는다 — 설명은 수백 자라 그대로 베끼면 페이지가
    그만큼 무거워진다(157장을 미리 만들어 두므로 더 그렇다). 값 없는 data-speak 로
    표시만 해 두고, 누를 때 감싸고 있는 칸의 글을 읽는다. */
@@ -392,10 +393,12 @@ document.addEventListener("click", (e) => {
   /* 값이 없는 data-speak 는 "나를 감싼 칸을 읽어라"는 뜻이다.
      칸(.info-block) 안의 문단을 모두 이어 읽는다 — 에피소드가 여러 회차로 나뉘어도
      버튼 하나로 처음부터 끝까지 들려준다. 제목(h3)은 빼고 문단만 읽는다.
+     항목(li) 안의 버튼은 그 항목만 읽는다 — 낱말 풀이는 칸 제목 대신 풀이마다 이름 옆에
+     버튼이 있다(tools/build-pages.mjs 의 notesHTML).
      칸을 못 찾으면 예전처럼 감싼 요소의 글을 읽는다.
      줄거리의 낱말 풀이 번호(<sup class="note-ref">)는 빼고 읽는다 — 그대로 두면
      「로미1가」처럼 숫자가 이름에 붙어 읽힌다. */
-  const box = btn.closest(".info-block");
+  const box = btn.closest("li, .info-block");
   const ps = box ? [...box.querySelectorAll("p")] : [];
   const spoken = (el) => {
     const copy = el.cloneNode(true);

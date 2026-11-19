@@ -94,8 +94,9 @@ function relationsHTML(center) {
  *
  * 에피소드 줄거리에서 두 가지를 찾는다.
  *   · 다른 티니핑 이름 — 그 티니핑 페이지로 가는 링크로 바꾼다
- *   · 사람 이름과 고유 명사 — 번호를 달고, 에피소드와 관계 사이 '📝 낱말 풀이' 칸에
- *     풀이를 모은다 (tools/glossary.js · images/glossary/, tools/make-glossary-images.py)
+ *   · 사람 이름과 고유 명사 — 낱말을 그 풀이로 가는 링크로 감싸 번호를 달고, 에피소드와
+ *     관계 사이 '📝 낱말 풀이' 칸에 풀이를 모은다
+ *     (tools/glossary.js · images/glossary/, tools/make-glossary-images.py)
  *
  * 둘을 한데 모아 **긴 말부터** 맞춘다. 「로미핑」이 「로미」보다, 「다해핑」이 「해핑」보다,
  * 「프린세스 스타라이트」가 「프린세스 스타」보다 먼저 걸려야 한다. 그리고 낱말의 첫머리에서만
@@ -169,12 +170,17 @@ function pingLink(w, ctx, linked) {
   return `<a class="ping-link" href="${encodeURIComponent(t.id)}.html">${esc(w.text)}</a>`;
 }
 
+/* 낱말 전체를 풀이로 가는 링크로 감싸고, 번호는 그 안의 어깨에 단다. 예전에는 어깨 번호만
+   링크라 작은 숫자 하나를 손가락으로 맞혀야 했다. 번호는 여전히 <sup class="note-ref"> 다 —
+   읽어 주기가 이 칸을 빼고 읽는다(js/util.js). 화면 읽기 프로그램에는 「딜런1」 대신
+   「딜런, 낱말 풀이 1」로 알린다. */
 function noteRef(w, ctx) {
   const n = w.note;
   if (ctx.notes.has(n.id)) return esc(w.text);
   ctx.notes.set(n.id, n);
   const no = ctx.notes.size;
-  return `${esc(w.text)}<sup class="note-ref"><a href="#note-${n.id}" aria-label="낱말 풀이 ${no}">${no}</a></sup>`;
+  return `<a class="note-link" href="#note-${n.id}" aria-label="${esc(w.text)}, 낱말 풀이 ${no}">` +
+    `${esc(w.text)}<sup class="note-ref">${no}</sup></a>`;
 }
 
 /* 줄거리 한 문단을 HTML 로. ctx.notes 는 페이지 전체에 걸쳐 쌓인다(번호가 이어진다). */
@@ -191,8 +197,11 @@ function storyText(plot, ctx) {
   return out + esc(plain);
 }
 
-/* 낱말 풀이 칸. 이름 뒤의 마침표는 눈에 보이지 않게 숨겨 둔다 — 읽어 주기가 문단의 글을 통째로
-   읽으므로, 그것이 없으면 「로미 이모션 왕국의 공주예요」처럼 이름과 풀이가 붙어 읽힌다. */
+/* 낱말 풀이 칸. 읽어 주기 버튼은 칸 제목이 아니라 항목마다 이름 옆에 달고, 누르면 그 항목만
+   읽는다(js/util.js) — 번호를 눌러 내려온 아이가 그 풀이만 골라 듣는다. 칸 제목 옆에 하나만
+   두었을 때는 풀이 여럿을 한 덩어리로 이어 읽어, 하나만 듣고 싶어도 처음부터 다 들어야 했다.
+   이름 뒤의 마침표는 눈에 보이지 않게 숨겨 둔다 — 읽어 주기가 항목의 글을 통째로 읽으므로,
+   그것이 없으면 「로미 이모션 왕국의 공주예요」처럼 이름과 풀이가 붙어 읽힌다. */
 function notesHTML(notes) {
   if (!notes.size) return "";
   const items = [...notes.values()].map((n, k) => {
@@ -202,7 +211,9 @@ function notesHTML(notes) {
         ` alt="" width="112" height="112" loading="lazy"></span>`
       : "";
     return `<li id="note-${n.id}"><span class="note-no">${k + 1}</span>${pic}` +
-      `<p><b class="note-term">${esc(n.term)}</b><span class="note-sep">. </span>${esc(n.text)}</p></li>`;
+      `<p><span class="note-head"><b class="note-term">${esc(n.term)}</b>` +
+      `${speakBlockBtnHTML(`${n.term} 풀이 읽어 주기`)}</span>` +
+      `<span class="note-sep">. </span>${esc(n.text)}</p></li>`;
   }).join("\n            ");
   return `<ol class="note-list">\n            ${items}\n          </ol>`;
 }
@@ -419,7 +430,7 @@ ${HEADER}
         ${block(`🪄 마법${speakBlockBtnHTML("마법 설명 읽어 주기")}`, magicText
           ? `<p>${esc(magicText)}</p>` : "")}
         ${block(`📖 에피소드${speakBlockBtnHTML("에피소드 줄거리 읽어 주기")}`, storyHTML)}
-        ${block(`📝 낱말 풀이${speakBlockBtnHTML("낱말 풀이 읽어 주기")}`, notes)}
+        ${block("📝 낱말 풀이", notes)}
         ${block("🔗 관계", relations)}
       </div>
     </div>
